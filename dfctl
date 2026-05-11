@@ -1,0 +1,346 @@
+#!/bin/python
+import argparse, json
+from pathlib import Path
+from abc import ABC, abstractmethod
+from typing import Any, Literal
+from dataclasses import dataclass
+from enum import Enum
+from shutil import rmtree
+
+
+
+#
+#       <Default-Config>
+#
+DEFAULT_CONFIG  :dict   ={
+    "dots_path":     "~/.dotfiles",
+    "dots_repo":     "",
+    "noconfirm"     :False,
+    "autopull"      :False,
+    "autopush"      :False}
+
+
+
+#
+#       <Installer>
+#
+#   TODO: Not implemented yet, there will be self single-file installer integrations to /usr/local/bin
+#   just moving the damh file, not a hard task, but maybe i will add cache stage status of the installation
+#   so then if the instalation crashes or whatever in the mid., in the next exec. it will read the cache and know
+
+
+
+#
+#       <Configs-Wrapper>
+#
+CONFIG_FOLDER       :Path   =Path("~/.config/dfctl").expanduser()
+CONFIG_FILE         :Path   =(CONFIG_FOLDER/"config.json")
+
+if not CONFIG_FOLDER.exists(): CONFIG_FOLDER.mkdir()
+if not CONFIG_FILE.exists():
+    print(f"Creating config file in {CONFIG_FILE} with default config:\n"
+          f"{json.dumps(DEFAULT_CONFIG,indent=4)}")
+    with open(CONFIG_FILE, 'w') as File:
+        json.dump(DEFAULT_CONFIG,File,indent=4)
+with open(CONFIG_FILE, 'r') as File:
+    CONFIG  :dict   =json.load(File)
+
+CONFIG_PATH_CWD     :Path   =Path.cwd()
+CONFIG_PATH_DOTS    :Path   =Path(CONFIG.get("dots_path",DEFAULT_CONFIG["dots_path"])).expanduser()
+CONFIG_DOTS_REPO    :str    =CONFIG.get("dots_repo",DEFAULT_CONFIG["dots_repo"])
+CONFIG_NOCONFIRM    :bool   =CONFIG.get("noconfirm",DEFAULT_CONFIG["noconfirm"])
+CONFIG_AUTOPULL     :bool   =CONFIG.get("autopull",DEFAULT_CONFIG["autopull"])
+CONFIG_AUTOPUSH     :bool   =CONFIG.get("autopush",DEFAULT_CONFIG["autopush"])
+
+
+
+
+#
+#       <"""LIB""">
+#
+#   WARNING: THIS NEED GREAT POLISH!!!
+#   This """"LIB"""" is ugly and sucks, most of its "design choices" was made by size and std-only reasons, so yea... (covering my shit, lol)
+#   not scalable at any meanings, but for a single file project i think it passes, i THINK.....
+def ynquestion(txt:str, strong_y:bool=True) -> bool:
+    ask = "[Y/n]" if strong_y else "[N/y]"
+    inp = input(f"{txt} {ask} ").lower()
+    if inp in ['y', "yes"]:             return True
+    elif inp in ['n', 'no']:            return False
+    elif inp.replace(' ','') == '':     return strong_y 
+    else:                               return not strong_y 
+
+def beautypath(path:Path) -> Path:
+    home = path.home()
+    result = path
+    try:
+        result = Path('~') / path.relative_to(home)
+    except ValueError:
+        pass
+    return result
+
+class SubParser(ABC):
+    @abstractmethod
+    def func(self, args:argparse.Namespace):
+        pass
+    @abstractmethod
+    def setup(self, subparser:argparse.ArgumentParser):
+        pass
+    def __init__(self, subparser:argparse.ArgumentParser):
+        self.setup(subparser)
+        subparser.set_defaults(func=self.func)
+
+class WholeNumber(int):
+    def __new__(cls,value:int|str=0):
+        if not isinstance(value, int):  value=int(value)
+        if value < 0:                   raise ValueError("Value must be >= 0")
+        return super().__new__(cls,value)
+
+#   HACK: This is a little funky, not gonna lye...
+class TargetExtentions(Enum):
+    #NAME       =[Symbol,Default]
+    LEVEL       =('@',"User")
+    GROUP       =None
+    BRANCH      =(':',"main")
+    INSTANCE    =('/',WholeNumber(0))
+
+#   NOTE: Not in use for now, will be when the FIX in Target be managed
+@dataclass
+class TargetGroup():
+    name        :str
+    level       :str
+    branch      :str
+    instance    :WholeNumber
+
+#   NOTE: I would make that class way nicer if this would be a multifile project
+#   this class is NOT modular, but for the porpuse of this application, it works...
+def target(
+    raw             :str,
+    range           :TargetExtentions):
+
+    raw_list            :str            =raw[raw.find('['):raw.rfind(']')+1]
+    raw_nolist          :str            =raw.replace(raw_list,'')
+    available_levels    :list           =next(CONFIG_PATH_DOTS.walk())[1]
+    available_levelsg   :dict           ={level:next((CONFIG_PATH_DOTS/level).walk())[1] for level in available_levels}
+
+    extentions          :dict[str,tuple]    ={x.name:x.value for x in TargetExtentions if x.value}
+    names               :list[str]          =[k for k in extentions.keys()]
+    range_ind           :int                =next(_ for _,x in enumerate(names) if x == range.name) if range.name != "GROUP" else 0
+    excludes_names      :list[str]          =[k for k in names[range_ind+1:]]
+    symbols             :list[str]          =[v[0] for v in extentions.values()]
+    defaults            :list[Any]          =[v[1] for v in extentions.values()]
+
+    for _,name in enumerate(names):
+        symbol  = symbols[_]
+        default = defaults[_]
+        match raw_nolist.count(symbol):
+            case 0:
+                match name:
+                    case TargetExtentions.LEVEL.name:
+                        raw = f"{default}{symbol}{raw}"
+                    case TargetExtentions.BRANCH.name:
+                        raw = f"{raw}{symbol}{default}"
+                        if raw.count(symbols[_+1]) != 0: raw = f"{raw[:raw.find(symbols[_+1])]}{symbol}{default}{raw[raw.find(symbols[_+1]):]}"
+                    case TargetExtentions.INSTANCE.name:
+                        raw = f"{raw}{symbol}{default}"
+            case 1:
+                if name in excludes_names: raise ValueError(f"{name} cannot be passed in range {range.name}")
+            case _:
+                raise ValueError(f"{name} passed more than once")
+
+    input_level         :str            =raw[:raw.find(symbols[0])]
+    levels              :list           =[input_level] if input_level != '*' else available_levels
+    if input_level not in available_levels and input_level != '*':
+        raise ValueError(f"level '{input_level}' does not exist, available ones: {available_levels}")
+
+    groups              :None|list      =raw_list[1:len(raw_list)-1].replace(' ','').split(',') if raw_list else [raw[raw.find(symbols[0])+1:raw.rfind(symbols[1])]]
+    if '*' in groups:
+        if groups[0] != '*': raise ValueError("please use * inside lists as first element")
+        groups = groups[1:]+[x for k,v in available_levelsg.items() for x in v if k in levels]
+
+    general_branch      :str            =raw[raw.rfind(symbols[1])+1:raw.rfind(symbols[2])]
+    general_instance    :str            =raw[raw.rfind(symbols[2])+1:]
+
+    result              :list[TargetGroup]  =[]
+    result_remove_list  :list[str]          =[]
+    for group in groups:
+        level       :str            =defaults[0]
+        name        :str            =group[:[group.find(symbols[ind]) if group.count(symbols[ind]) else len(group) for ind in [1,2]][0]]
+        mode        :Literal["add","remove"]    ="add" if name[0] != '-' else "remove"; name = name[1:] if name[0] == '-' else name
+        try: level = next(k for k,v in {k:v for k,v in available_levelsg.items() if k in levels}.items() if name in v)
+        except: raise ValueError(f"group '{name}' does not exist in levels {levels}")
+
+        branch      :str            =group[group.find(symbols[1])+1 if group.count(symbols[1]) else 0 :
+                                   group.find(symbols[2]) if group.count(symbols[2]) else len(group)] if group.count(symbols[1]) else general_branch
+        if branch not in next((CONFIG_PATH_DOTS/level/name).walk())[1]:
+            raise ValueError(f"branch '{branch}' does not exist in group '{level}@{name}'")
+        
+        instance    :WholeNumber    =WholeNumber(group[group.find(symbols[2])+1:]) if group.count(symbols[2]) else WholeNumber(general_instance)
+        if str(instance) not in [y for x in next((CONFIG_PATH_DOTS/level/name/branch).walk())[1:] for y in x]:
+            raise ValueError(f"instance '{instance}' does not exist in branch '{level}@{name}:{branch}'")
+
+        match mode:
+            case "add":
+                result.append(TargetGroup(name,level,branch,instance))
+            case "remove":
+                result_remove_list.append(name)
+    result = [x for x in result if x.name not in result_remove_list]
+    return result
+
+
+#
+#       <CLI>
+#
+#   TODO: This part REALLY need some work
+parser          :argparse.ArgumentParser        =argparse.ArgumentParser(prog="dfctl",
+                                                                         description="Dotfiles CLI",
+                                                                         color=False,
+                                                                         formatter_class=argparse.RawDescriptionHelpFormatter,
+                                                                         epilog="target:\n"
+                                                                                "  [LEVEL@]([-]GROUP[:BRANCH][/INSTANCE][...] | [-]GROUP[...][:BRANCH][/INSTANCE])\n"
+                                                                                "  elements:\n"
+                                                                                "    LEVEL:     the ground where all your groups will live\n"
+                                                                                "    GROUP:     the dotfile group itself, like 'tmux'\n"
+                                                                                "    BRANCH:    the branch of the group, like 'main', 'secound', ...\n"
+                                                                                "    INSTANCE:  index of a file or folder of the dot\n"
+                                                                                "  comment:\n"
+                                                                                "    Syntax for Lists (...): [a,b,c,d,...]\n"
+                                                                                "    '*' Can be used in LEVEL and GROUP to expand all elements\n"
+                                                                                "    '-' Means Exclude/Negate\n"
+                                                                                "    '<x> target' Means that it is a target that accept info until x, if passed info after x, it will error\n")
+parser.add_argument("--noconfirm", action="store_true", help=f"skip confirmation prompts (default:False; config:{CONFIG_NOCONFIRM})")
+parser.add_argument("--autopull", action="store_true", help=f"auto pull before any local-repo action (default:False; config:{CONFIG_AUTOPULL})")
+parser.add_argument("--autopush", action="store_true", help=f"auto push after any local-repo action (default:False; config:{CONFIG_AUTOPUSH})")
+subparsers      :argparse._SubParsersAction     =parser.add_subparsers(required=True)
+def run_pass(subparser:argparse.ArgumentParser):
+    def __deco(cls):
+        cls(subparser)
+        return cls
+    return __deco
+
+
+@run_pass(subparsers.add_parser("install"))
+class install(SubParser):
+    def func(self, args):
+        groups  = target(args.target, range=TargetExtentions.GROUP)
+        print(f"selection: {[f"{x.level}@{x.name}" for x in groups]}")
+        confirm = ynquestion(f"Warning: This will overwrite local configs. Proceed with installation?") if not args.noconfirm else True
+        if confirm:
+            for group in groups:
+                path    :Path   =Path.joinpath(CONFIG_PATH_DOTS,group.level,group.name,group.branch)
+                with open(path/"syms.json", 'r') as File:
+                    syms   :dict   =json.load(File)
+
+                print(f"Installing '{group.name}'...")
+                installed   :list   =[]
+                for original,sym in syms.items():
+                    sym         =Path.expanduser(Path(sym))
+                    original    =path/original
+                    run_status       ="WRITE"
+                    
+                    while True:
+                        try:
+                            sym.symlink_to(path/original)
+                            installed.append((run_status,sym,original))
+                            break
+                        except FileExistsError:
+                            if sym.is_symlink():
+                                if sym.readlink() == original:
+                                    installed.append(("ALREADY",sym,original))
+                                    break
+                            sym.unlink() if sym.is_file() else rmtree(sym)
+                            run_status = "OVERWRITE"         
+
+                [print(f"    {f'{x[0]}:':<9} ({beautypath(x[1])} > {beautypath(x[2])})") for x in installed]
+                print(f"    Install Completed")
+
+
+    def setup(self, subparser):
+        subparser.add_argument("target",help="group target")
+
+@run_pass(subparsers.add_parser("uninstall"))
+class uninstall(SubParser):
+    def func(self, args):
+        groups  = target(args.target, range=TargetExtentions.GROUP)
+        confirm = ynquestion(f"Are you sure you want to proceed with uninstalling?") if not args.noconfirm else True
+        if confirm:
+            for group in groups:
+                path    :Path   =Path.joinpath(CONFIG_PATH_DOTS,group.level,group.name,group.branch)
+                with open(path/"syms.json", 'r') as File:
+                    syms   :dict   =json.load(File)
+
+                print(f"Uninstalling '{group.name}'...")
+                uninstalled     :list   =[]
+                for original,sym in syms.items():
+                    sym         =Path.expanduser(Path(sym))
+                    original    =path/original
+                    
+                    try:
+                        sym.unlink()
+                    except FileNotFoundError:
+                        pass
+                    else:
+                        uninstalled.append((sym,original))
+
+                if uninstalled:
+                    [print(f"    ({beautypath(x[0])} > {beautypath(x[1])})") for x in uninstalled]
+                    print(f"    Uninstall Completed")
+                else:
+                    print(f"    Already Uninstalled")
+
+    def setup(self, subparser):
+        subparser.add_argument("target",help="group target")
+
+#   TODO:
+@run_pass(subparsers.add_parser("delete"))
+class delete(SubParser):
+    def func(self, args):
+        mode    :TargetExtentions   =TargetExtentions[args.mode.upper()]
+        groups  :list[TargetGroup]  =target(args.target, mode)
+        confirm = ynquestion(f"Are you sure you want to proceed with deletion?") if not args.noconfirm else True
+        print(mode,groups)
+    def setup(self, subparser):
+        #   HACK: Funky as fuck the help prop in mode argument
+        mode_choices    :list   =[x.name.lower() for x in TargetExtentions]
+        subparser.add_argument("mode",metavar="mode",choices=mode_choices, help=f"{'{'}{','.join(mode_choices)}{'}'}")
+        subparser.add_argument("target",help="<mode> target")
+
+#   TODO:
+@run_pass(subparsers.add_parser("push"))
+class push(SubParser):
+    def func(self, args):
+        print(args)
+    def setup(self, subparser):
+        pass
+
+#   TODO:
+@run_pass(subparsers.add_parser("pull"))
+class pull(SubParser):
+    def func(self, args):
+        print(args)
+    def setup(self, subparser):
+        pass
+
+#   TODO:
+@run_pass(subparsers.add_parser("mkinstance"))
+class mkinstance(SubParser):
+    def func(self, args):
+        print(args)
+    def setup(self, subparser):
+        subparser.add_argument(
+            "instance",
+            help="""
+            the instance to make (instances start at 0);
+            E.G: "User@tmux:main/0" or just "tmux" """)
+
+        subparser.add_argument(
+            "path",
+            help="""
+            the path where the instance links (folder or file);
+            E.G: "~/.config/tmux" """)
+
+
+
+
+if __name__ == "__main__":
+    args = parser.parse_args()
+    args.func(args)
