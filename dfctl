@@ -3,7 +3,7 @@ import argparse, json
 from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import Any, Literal, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field, asdict
 from enum import Enum
 from shutil import rmtree
 
@@ -19,6 +19,9 @@ def ynquestion(txt:str, strong_y:bool=True) -> bool:
     elif inp in ['n', 'no']:            return False
     elif inp.replace(' ','') == '':     return strong_y 
     else:                               return not strong_y 
+def take_value(request:bool, on_true:Any=True, on_false:Any=False):
+    if request: return on_true() if isinstance(on_true,Callable) else on_true
+    else:       return on_false() if isinstance(on_false,Callable) else on_false
 def beautypath(path:Path) -> Path:
     home = path.home()
     result = path
@@ -33,13 +36,24 @@ def beautypath(path:Path) -> Path:
 #
 #       <Default-Config>
 #
-DEFAULT_CONFIG  :dict   ={
-    "dots_path":     "~/.dotfiles",
-    "dots_repo":     lambda :input("Dotfiles Repo: ") if ynquestion("Do you have a dotfiles repo?") else None,
-    "noconfirm"     :False,
-    "autopull"      :False,
-    "autopush"      :False}
+@dataclass
+class DefaultConfig():
+    install     :bool       =field(init=False)
+    dots_repo   :None|str   =field(init=False)
+    dots_path   :str        =field(init=False)
+    noconfirm   :bool       =field(init=False)
+    autopull    :bool       =field(init=False)
+    autopush    :bool       =field(init=False)
+    def __post_init__(self):
+        while True:
+            self.install    =ynquestion("Install dfctl?")
+            self.dots_repo  =take_value(ynquestion("Do you have a dotfiles repo?"),lambda :input("Dotfiles repo: "),None)
+            self.dots_path  =take_value(ynquestion("Change dotfiles path? (~/.dotfiles)",False),lambda :input("Path: "),"~/.dotfiles")
+            self.noconfirm  =ynquestion("Enable noconfirm?",False)
+            self.autopull   =ynquestion("Enable autopull?",True) if self.dots_repo else False
+            self.autopush   =ynquestion("Enable noconfirm?",True) if self.dots_repo else False
 
+            if ynquestion("\nConfirm Configuration?"): break
 
 
 #
@@ -51,17 +65,18 @@ CONFIG_FILE         :Path   =(CONFIG_FOLDER/"config.json")
 if not CONFIG_FOLDER.exists(): CONFIG_FOLDER.mkdir()
 if not CONFIG_FILE.exists():
     print(f"Creating config file in {CONFIG_FILE} with default config")
-    DEFAULT_CONFIG = {k: v() if isinstance(v,Callable) else v for k,v in DEFAULT_CONFIG.items()}
+    DEFAULT_CONFIG = {k: v() if isinstance(v,Callable) else v for k,v in asdict(DefaultConfig()).items()}
     with open(CONFIG_FILE, 'w') as File:
         json.dump(DEFAULT_CONFIG,File,indent=4)
 
 with open(CONFIG_FILE, 'r') as File:
     CONFIG  :dict   =json.load(File)
-CONFIG_PATH_DOTS    :Path   =Path(CONFIG.get("dots_path",DEFAULT_CONFIG["dots_path"])).expanduser()
-CONFIG_DOTS_REPO    :str    =CONFIG.get("dots_repo",DEFAULT_CONFIG["dots_repo"])
-CONFIG_NOCONFIRM    :bool   =CONFIG.get("noconfirm",DEFAULT_CONFIG["noconfirm"])
-CONFIG_AUTOPULL     :bool   =CONFIG.get("autopull",DEFAULT_CONFIG["autopull"])
-CONFIG_AUTOPUSH     :bool   =CONFIG.get("autopush",DEFAULT_CONFIG["autopush"])
+CONFIG_INSTALL      :bool   =CONFIG["install"]
+CONFIG_DOTS_REPO    :str    =CONFIG["dots_repo"]
+CONFIG_PATH_DOTS    :Path   =Path(CONFIG["dots_path"]).expanduser()
+CONFIG_NOCONFIRM    :bool   =CONFIG["noconfirm"]
+CONFIG_AUTOPULL     :bool   =CONFIG["autopull"]
+CONFIG_AUTOPUSH     :bool   =CONFIG["autopush"]
 
 
 
@@ -72,7 +87,7 @@ CONFIG_AUTOPUSH     :bool   =CONFIG.get("autopush",DEFAULT_CONFIG["autopush"])
 PATH_CWD            :Path   =Path.cwd()
 PATH_CWF            :Path   =Path(__file__)
 PATH_INSTALL :Path   =Path("/usr/local/bin")
-if PATH_CWF != (PATH_INSTALL/PATH_CWF.name):
+if PATH_CWF != (PATH_INSTALL/PATH_CWF.name) and CONFIG_INSTALL:
     print("NOT INSTALLED")
 
 
