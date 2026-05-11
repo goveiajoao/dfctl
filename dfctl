@@ -2,10 +2,31 @@
 import argparse, json
 from pathlib import Path
 from abc import ABC, abstractmethod
-from typing import Any, Literal
+from typing import Any, Literal, Callable
 from dataclasses import dataclass
 from enum import Enum
 from shutil import rmtree
+
+
+
+#
+#       <Start-LIB>
+#
+def ynquestion(txt:str, strong_y:bool=True) -> bool:
+    ask = "[Y/n]" if strong_y else "[N/y]"
+    inp = input(f"{txt} {ask} ").lower()
+    if inp in ['y', "yes"]:             return True
+    elif inp in ['n', 'no']:            return False
+    elif inp.replace(' ','') == '':     return strong_y 
+    else:                               return not strong_y 
+def beautypath(path:Path) -> Path:
+    home = path.home()
+    result = path
+    try:
+        result = Path('~') / path.relative_to(home)
+    except ValueError:
+        pass
+    return result
 
 
 
@@ -14,19 +35,10 @@ from shutil import rmtree
 #
 DEFAULT_CONFIG  :dict   ={
     "dots_path":     "~/.dotfiles",
-    "dots_repo":     "",
+    "dots_repo":     lambda :input("Dotfiles Repo: ") if ynquestion("Do you have a dotfiles repo?") else None,
     "noconfirm"     :False,
     "autopull"      :False,
     "autopush"      :False}
-
-
-
-#
-#       <Installer>
-#
-#   TODO: Not implemented yet, there will be self single-file installer integrations to /usr/local/bin
-#   just moving the damh file, not a hard task, but maybe i will add cache stage status of the installation
-#   so then if the instalation crashes or whatever in the mid., in the next exec. it will read the cache and know
 
 
 
@@ -38,14 +50,13 @@ CONFIG_FILE         :Path   =(CONFIG_FOLDER/"config.json")
 
 if not CONFIG_FOLDER.exists(): CONFIG_FOLDER.mkdir()
 if not CONFIG_FILE.exists():
-    print(f"Creating config file in {CONFIG_FILE} with default config:\n"
-          f"{json.dumps(DEFAULT_CONFIG,indent=4)}")
+    print(f"Creating config file in {CONFIG_FILE} with default config")
+    DEFAULT_CONFIG = {k: v() if isinstance(v,Callable) else v for k,v in DEFAULT_CONFIG.items()}
     with open(CONFIG_FILE, 'w') as File:
         json.dump(DEFAULT_CONFIG,File,indent=4)
+
 with open(CONFIG_FILE, 'r') as File:
     CONFIG  :dict   =json.load(File)
-
-CONFIG_PATH_CWD     :Path   =Path.cwd()
 CONFIG_PATH_DOTS    :Path   =Path(CONFIG.get("dots_path",DEFAULT_CONFIG["dots_path"])).expanduser()
 CONFIG_DOTS_REPO    :str    =CONFIG.get("dots_repo",DEFAULT_CONFIG["dots_repo"])
 CONFIG_NOCONFIRM    :bool   =CONFIG.get("noconfirm",DEFAULT_CONFIG["noconfirm"])
@@ -54,30 +65,28 @@ CONFIG_AUTOPUSH     :bool   =CONFIG.get("autopush",DEFAULT_CONFIG["autopush"])
 
 
 
+#
+#       <Installer>
+#
+#   TODO:
+PATH_CWD            :Path   =Path.cwd()
+PATH_CWF            :Path   =Path(__file__)
+PATH_INSTALL :Path   =Path("/usr/local/bin")
+if PATH_CWF != (PATH_INSTALL/PATH_CWF.name):
+    print("NOT INSTALLED")
+
+
 
 #
-#       <"""LIB""">
+#       <Setup-Dots>
 #
-#   WARNING: THIS NEED GREAT POLISH!!!
-#   This """"LIB"""" is ugly and sucks, most of its "design choices" was made by size and std-only reasons, so yea... (covering my shit, lol)
-#   not scalable at any meanings, but for a single file project i think it passes, i THINK.....
-def ynquestion(txt:str, strong_y:bool=True) -> bool:
-    ask = "[Y/n]" if strong_y else "[N/y]"
-    inp = input(f"{txt} {ask} ").lower()
-    if inp in ['y', "yes"]:             return True
-    elif inp in ['n', 'no']:            return False
-    elif inp.replace(' ','') == '':     return strong_y 
-    else:                               return not strong_y 
+#   TODO:
 
-def beautypath(path:Path) -> Path:
-    home = path.home()
-    result = path
-    try:
-        result = Path('~') / path.relative_to(home)
-    except ValueError:
-        pass
-    return result
 
+
+#
+#       <LIB>
+#
 class SubParser(ABC):
     @abstractmethod
     def func(self, args:argparse.Namespace):
@@ -95,7 +104,6 @@ class WholeNumber(int):
         if value < 0:                   raise ValueError("Value must be >= 0")
         return super().__new__(cls,value)
 
-#   HACK: This is a little funky, not gonna lye...
 class TargetExtentions(Enum):
     #NAME       =[Symbol,Default]
     LEVEL       =('@',"User")
@@ -103,7 +111,6 @@ class TargetExtentions(Enum):
     BRANCH      =(':',"main")
     INSTANCE    =('/',WholeNumber(0))
 
-#   NOTE: Not in use for now, will be when the FIX in Target be managed
 @dataclass
 class TargetGroup():
     name        :str
