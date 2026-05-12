@@ -1,11 +1,19 @@
 #!/bin/python
-import argparse, json
+import argparse, json, subprocess
 from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import Any, Literal, Callable
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 from shutil import rmtree
+
+#
+#
+#   DFCTL
+#
+#   WARNING: This file/project will be rebuild in go for learning reasons
+
+
 
 
 
@@ -52,7 +60,6 @@ class DefaultConfig():
             self.noconfirm  =ynquestion("Enable noconfirm?",False)
             self.autopull   =ynquestion("Enable autopull?",True) if self.dots_repo else False
             self.autopush   =ynquestion("Enable noconfirm?",True) if self.dots_repo else False
-
             if ynquestion("\nConfirm Configuration?"): break
 
 
