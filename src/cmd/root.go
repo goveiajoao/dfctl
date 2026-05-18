@@ -30,5 +30,4 @@ func init() {
     rootCmd.Flags().BoolVar(&NoConfirm, "noconfirm", false, "Remove confirmations")
     rootCmd.Flags().BoolVar(&AutoPull, "autopull", true, "Auto pull before any action")
     rootCmd.Flags().BoolVar(&AutoPush, "autopush", true, "Auto push after any action")
-    rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
