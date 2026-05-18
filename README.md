@@ -1,2 +1,2 @@
-# **D**ot**F**iles **C**on**T**ro**L**
+# ***D***ot***f***iles ***C***on***t***ro***l***
 A simple controler for dotfiles
