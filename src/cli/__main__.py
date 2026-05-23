@@ -3,12 +3,25 @@ from pathlib import Path
 from typing import Callable
 from dataclasses import asdict
 from shutil import rmtree
+from lib import config
 from lib.config import DefaultConfig
 from lib.parser import SubParser
 from lib.target import TargetExtentions, TargetGroup, get_target_groups
 from lib.misc import ynquestion, beautypath
-from git import Repo 
-from git.exc import  InvalidGitRepositoryError
+from git import Repo, Remote 
+from git.exc import InvalidGitRepositoryError
+from rich.console import Console
+from rich import print
+
+
+
+
+#
+#       <Rich>
+#
+console = Console()
+
+
 
 
 #
@@ -34,12 +47,14 @@ CONFIG_AUTOPUSH     :bool   =CONFIG["autopush"]
 
 
 #
-#       <Configs-Wrapper>
+#       <Repo>
 #
 try: REPO    :Repo       =Repo(CONFIG_PATH_DOTS)
 except InvalidGitRepositoryError:
-    print(f"Git repo dont exists in '{CONFIG_PATH_DOTS}'")
+    print(f"Git repo dont exists in '{CONFIG_PATH_DOTS}'\nPlease create it or clone an existing one to start using dfctl"); exit()
 except Exception as e: raise e
+try: REPO_REMOTE    :Remote     =REPO.remote()
+except: print(f"Please create 'origin' remote in the repo inside '{CONFIG_PATH_DOTS}'"); exit()
 
 
 
@@ -72,13 +87,22 @@ def run_pass(subparser:argparse._SubParsersAction):
         cls(subparser.add_parser(cls.__name__))
         return cls
     return __deco
+def autopullsh(func):
+    def __deco(*args, **kwargs):
+        if args[1].autopull:
+            with console.status("[bold green]Pulling from repo...") as status: REPO_REMOTE.pull()
+        result = func(*args,**kwargs)
+        if args[1].autopush:
+            with console.status("[bold green]Pushing to repo...") as status: REPO_REMOTE.push()
+        return result
+    return __deco
 
 
 @run_pass(subparsers)
 class install(SubParser):
     def func(self, args):
         groups  = get_target_groups(args.target, range=TargetExtentions.GROUP, path=CONFIG_PATH_DOTS)
-        print(f"selection: {[f"{x.level}@{x.name}" for x in groups]}")
+        print(f"{[f"{x.level}@{x.name}" for x in groups]}")
         confirm = ynquestion(f"Warning: This will overwrite local configs. Proceed with installation?") if not args.noconfirm else True
         if confirm:
             for group in groups:
@@ -89,7 +113,7 @@ class install(SubParser):
                 print(f"Installing '{group.name}'...")
                 installed   :list   =[]
                 for original,sym in syms.items():
-                    sym         =Path.expanduser(Path(sym))
+                    sym         =Path(sym).expanduser()
                     original    =path/original
                     run_status       ="WRITE"
                     
@@ -117,6 +141,7 @@ class install(SubParser):
 class uninstall(SubParser):
     def func(self, args):
         groups  = get_target_groups(args.target, range=TargetExtentions.GROUP, path=CONFIG_PATH_DOTS)
+        print(f"{[f"{x.level}@{x.name}" for x in groups]}")
         confirm = ynquestion(f"Are you sure you want to proceed with uninstalling?") if not args.noconfirm else True
         if confirm:
             for group in groups:
@@ -149,19 +174,68 @@ class uninstall(SubParser):
 #   TODO:
 @run_pass(subparsers)
 class rm(SubParser):
+    @autopullsh
     def func(self, args):
         mode    :TargetExtentions   =TargetExtentions[args.mode.upper()]
         groups  :list[TargetGroup]  =get_target_groups(args.target, mode, path=CONFIG_PATH_DOTS)
+        print(f"{[f"{x.level}@{x.name}" for x in groups]}")
         confirm = ynquestion(f"Are you sure you want to proceed with deletion?") if not args.noconfirm else True
-        print(mode,groups)
+        def takebymode(mode):
+            def group(group:TargetGroup):
+                msg = f"{group.level}@{group.name}"
+                console.log(f"[bold red]Removed[default] [bold blue]'{msg}'")
+                rmtree(CONFIG_PATH_DOTS/group.level/group.name)
+
+                REPO.git.add(all=True)
+                REPO.index.commit(f"Removed '{msg}'")
+
+            def branch(group):
+                msg = f"{group.level}@{group.name}:{group.branch}"
+                console.log(f"[bold red]Removed[default] [bold blue]'{msg}'")
+
+                rmtree(CONFIG_PATH_DOTS/group.level/group.name/group.branch)
+
+                REPO.git.add(all=True)
+                REPO.index.commit(f"Removed '{msg}'")
+
+            def instance(group):
+                msg = f"{group.level}@{group.name}:{group.branch}/{group.instance}"
+                console.log(f"[bold red]Removed[default] [bold blue]'{msg}'")
+
+                syms        = Path().joinpath(CONFIG_PATH_DOTS,group.level,group.name,group.branch,"syms.json")
+                instance    = Path().joinpath(CONFIG_PATH_DOTS,group.level,group.name,group.branch,str(group.instance))
+
+                with open(syms, 'r') as File:
+                    jsonfile = json.load(File)
+                with open(syms, 'w') as File:
+                    json.dump({k:v for k,v in jsonfile.items() if k != str(group.instance)},File)
+                instance.unlink() if instance.is_file() else rmtree(instance)
+
+                REPO.git.add(all=True)
+                REPO.index.commit(f"Removed '{msg}'")
+                
+            match mode:
+                case TargetExtentions.GROUP:
+                    return group
+                case TargetExtentions.BRANCH:
+                    return branch
+                case TargetExtentions.INSTANCE:
+                    return instance
+            return lambda x:x
+        final_func = takebymode(mode)
+        if confirm:
+            with console.status("[bold red] Removing...") as status:
+                for group in groups:
+                    final_func(group)
     def setup(self, subparser):
         #   HACK: Funky as fuck the help prop in mode argument
-        mode_choices    :list   =[x.name.lower() for x in TargetExtentions]
+        mode_choices    :list   =[x.name.lower() for x in TargetExtentions if x.name != "LEVEL"]
         subparser.add_argument("mode",metavar="mode",choices=mode_choices, help=f"{'{'}{','.join(mode_choices)}{'}'}")
         subparser.add_argument("target",help="<mode> target")
 #   TODO:
 @run_pass(subparsers)
 class mk(SubParser):
+    @autopullsh
     def func(self, args):
         print(args)
     def setup(self, subparser):
@@ -176,6 +250,13 @@ class mk(SubParser):
             help="""
             the path where the instance links (folder or file);
             E.G: "~/.config/tmux" """)
+#   TODO:
+@run_pass(subparsers)
+class ls(SubParser):
+    def func(self, args):
+        print(args)
+    def setup(self, subparser):
+        pass
 
 
 if __name__ == "__main__":
