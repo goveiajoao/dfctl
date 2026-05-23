@@ -11,3 +11,4 @@ A simple and easy dotfiles control tool
         - [ ] mk
         - [ ] ls
     - [ ] Docs 
+    - [ ] pyproject.toml
