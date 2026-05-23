@@ -2,10 +2,12 @@
 A simple and easy dotfiles control tool
 
 - TODO:
-    - [ ] Target System
+    - [x] Target System
+    - [ ] Target Dependencie System
     - [ ] Commands: 
-        - [ ] install
-        - [ ] uninstall
+        - [x] install
+        - [x] uninstall
+        - [x] rm
         - [ ] mk
-        - [ ] rm
+        - [ ] ls
     - [ ] Docs 
