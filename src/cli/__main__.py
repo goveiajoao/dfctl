@@ -65,7 +65,6 @@ except: ValueError(f"Please create 'origin' remote in the repo inside '{CONFIG_P
 #       <CLI>
 #
 #   TODO: This part REALLY need some work
-#   IDEA!, implement a "with" supported class for repeated subparsers headers
 parser  :argparse.ArgumentParser    =argparse.ArgumentParser(
     prog="dfctl",
     description="Dotfiles CLI",
