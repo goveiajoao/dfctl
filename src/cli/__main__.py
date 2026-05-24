@@ -4,7 +4,6 @@ from typing import Callable
 from dataclasses import dataclass, asdict, field
 from shutil import rmtree
 
-from git.objects.util import mode_str_to_int
 from lib.config import DefaultConfig
 from lib.parser import SubParser
 from lib.target import TargetExtentions, TargetGroup, get_target_groups

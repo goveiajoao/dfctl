@@ -5,10 +5,12 @@ A simple and easy dotfiles control tool
     - [x] Target System
     - [ ] Target Dependencie System
     - [ ] Commands: 
-        - [x] install
-        - [x] uninstall
-        - [x] rm
+        - [ ] install
+        - [ ] uninstall
+        - [ ] rm
         - [ ] mk
         - [ ] ls
+        - [ ] checkhealth 
+        - [ ] update 
     - [ ] Docs 
     - [ ] pyproject.toml
