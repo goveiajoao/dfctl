@@ -27,6 +27,19 @@ class TargetGroup():
     level       :str
     branch      :str
     instance    :WholeNumber
+    range       :TargetExtentions
+    def __str__(self):
+        extentions          :dict[str,tuple]    ={x.name:x.value for x in TargetExtentions if x.value}
+        symbols             :list[str]          =[v[0] for v in extentions.values()]
+        match self.range:
+            case TargetExtentions.LEVEL:
+                return f"{self.level}{symbols[0]}"
+            case TargetExtentions.GROUP:
+                return f"{self.level}{symbols[0]}{self.name}"
+            case TargetExtentions.BRANCH:
+                return f"{self.level}{symbols[0]}{self.name}{symbols[1]}{self.branch}"
+            case TargetExtentions.INSTANCE:
+                return f"{self.level}{symbols[0]}{self.name}{symbols[1]}{self.branch}{symbols[2]}{self.instance}"
 
 #   NOTE: I would make that class way nicer if this would be a multifile project
 #   this class is NOT modular, but for the porpuse of this application, it works...
@@ -98,7 +111,7 @@ def get_target_groups(
 
         match mode:
             case "add":
-                result.append(TargetGroup(name,level,branch,instance))
+                result.append(TargetGroup(name,level,branch,instance,range))
             case "remove":
                 result_remove_list.append(name)
     result = [x for x in result if x.name not in result_remove_list]
