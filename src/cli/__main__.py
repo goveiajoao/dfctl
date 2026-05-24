@@ -6,7 +6,7 @@ from shutil import rmtree
 
 from lib.config import DefaultConfig
 from lib.parser import SubParser
-from lib.target import TargetExtentions, TargetGroup, get_target_groups
+from lib.target import TargetExtentions, TargetGroup, get_target_groups, get_available_branchs, get_installed_branchs
 from lib.misc import beautypath
 from git import Repo, Remote 
 from git.exc import InvalidGitRepositoryError
@@ -21,7 +21,7 @@ from rich import print
 #       <Rich>
 #
 console = Console()
-
+error_console = Console(stderr=True, style="bold red")
 
 
 
@@ -113,7 +113,7 @@ class SubParserFS():
         if self.mode: groups = get_target_groups(str(self.target), CONFIG_PATH_DOTS, self.mode, self.invert_notfind)
         else: raise ValueError("specify the mode")
 
-        self.rich_console.log(f"Selected {[f"{str(x)}" for x in groups]}")
+        self.rich_console.log(f"[bold blue]Selected[/] {[f"{str(x)}" for x in groups]}")
 
         if (Confirm.ask(f"{self.ask}{self.ask_end}") if not self.args.noconfirm else True) or self.no_ask:
             return groups
@@ -147,73 +147,91 @@ def run_pass(subparser:argparse._SubParsersAction, **kwargs):
     return __deco
 
 
-#   TODO: Add check if other branch is not already installed
 @run_pass(subparsers)
 class install(SubParser):
     @SubParserFS(TargetExtentions.BRANCH)
     def func(self, args):
         groups :list[TargetGroup] =args.groups
+        installed_branchs = get_installed_branchs(CONFIG_PATH_DOTS)
+
+        _styles = {"WRITE":"[bold green]","ALREADY":"[bold orange1]","OVERWRITE":"[bold red]"}
         for group in groups:
-            path    :Path   =group.path
-            with open(path/"syms.json", 'r') as File:
-                syms   :dict   =json.load(File)
+            with console.status("[bold green] Installing..."):
+                alreadyones = [x for x in installed_branchs if x.name == group.name and x.branch != group.branch]
+                if len(alreadyones) > 0 and not args.force:
+                    raise ValueError(f"could not install branch '{str(group)}'\nanother branch from the same group already installed '{str(alreadyones[0])}'\nfor branch overwriting, use the force argument (-f)")
 
-            print(f"Installing '{group.name}'...")
-            installed   :list   =[]
-            for original,sym in syms.items():
-                sym         =Path(sym).expanduser()
-                original    =path/original
-                run_status       ="WRITE"
-                
-                while True:
-                    try:
-                        sym.symlink_to(path/original)
-                        installed.append((run_status,sym,original))
-                        break
-                    except FileExistsError:
-                        if sym.is_symlink():
-                            if sym.readlink() == original:
-                                installed.append(("ALREADY",sym,original))
-                                break
-                        sym.unlink() if sym.is_file() else rmtree(sym)
-                        run_status = "OVERWRITE"         
+                path    :Path   =group.path
+                with open(path/"syms.json", 'r') as File:
+                    syms   :dict   =json.load(File)
 
-            for x in installed: print(f"    {f'{x[0]}:':<9} ({beautypath(x[1])} > {beautypath(x[2])})")
-            print(f"    Install Completed")
+                installed   :list   =[]
+                run_status  :str    =""
+                for original,sym in syms.items():
+                    sym         =Path(sym).expanduser()
+                    original    =path/original
+                    run_status       ="WRITE"
+                    
+                    while True:
+                        try:
+                            sym.symlink_to(path/original)
+                            break
+                        except FileExistsError:
+                            if sym.is_symlink():
+                                if sym.readlink() == original:
+                                    run_status = "ALREADY"
+                                    break
+                                else:
+                                    sym.unlink() if sym.is_file() else rmtree(sym)
+                                    run_status = "OVERWRITE"         
+                    installed.append((run_status,sym,original,_styles[run_status]))
+
+                console.log(f"[bold green]Installed[/] [bold blue]'{str(group)}'")
+                for x in installed: console.log(f"\t{x[3]}{f'{x[0]}[/]':<9} ({beautypath(x[1])} > {beautypath(x[2])})")
 
 
     def setup(self, subparser):
         subparser.add_argument("target",help="group target")
+        subparser.add_argument("--force", "-f", action="store_true", help="use to overwrite already installed branchs")
 
-#   TODO: Will need to be TE.GROUP and take the branch part from list of installed ones
 @run_pass(subparsers)
 class uninstall(SubParser):
-    @SubParserFS(TargetExtentions.BRANCH)
+    @SubParserFS(TargetExtentions.GROUP)
     def func(self, args):
         groups :list[TargetGroup] =args.groups
+        installed_branchs = get_installed_branchs(CONFIG_PATH_DOTS)
+
+        uninstall_branchs  :list[TargetGroup]   =[]
         for group in groups:
-            path    :Path   =group.path
-            with open(path/"syms.json", 'r') as File:
-                syms   :dict   =json.load(File)
+            alreadyones = [x for x in installed_branchs if x.name == group.name]
+            if len(alreadyones) > 0:
+                uninstall_branchs.append(alreadyones[0])
 
-            print(f"Uninstalling '{group.name}'...")
-            uninstalled     :list   =[]
-            for original,sym in syms.items():
-                sym         =Path(sym).expanduser()
-                original    =path/original
-                
-                try:
-                    sym.unlink()
-                except FileNotFoundError:
-                    pass
+        for group in uninstall_branchs:
+            with console.status("[bold red] Uninstalling..."):
+
+                path    :Path   =group.path
+                with open(path/"syms.json", 'r') as File:
+                    syms   :dict   =json.load(File)
+
+                uninstalled     :list   =[]
+                for original,sym in syms.items():
+                    sym         =Path(sym).expanduser()
+                    original    =path/original
+                    
+                    try:
+                        sym.unlink()
+                    except FileNotFoundError:
+                        pass
+                    else:
+                        uninstalled.append((sym,original))
+
+                msg     :str    =str(group)
+                if uninstalled:
+                    console.log(f"[bold red]Uninstalled[/] [bold blue]'{msg}'")
+                    for x in uninstalled: console.log(f"        ({beautypath(x[0])} > {beautypath(x[1])})")
                 else:
-                    uninstalled.append((sym,original))
-
-            if uninstalled:
-                for x in uninstalled: print(f"    ({beautypath(x[0])} > {beautypath(x[1])})")
-                print(f"    Uninstall Completed")
-            else:
-                print(f"    Already Uninstalled")
+                    console.log(f"[bold green]Already Uninstalled[/] [bold blue]'{msg}'")
 
     def setup(self, subparser):
         subparser.add_argument("target",help="group target")
@@ -234,7 +252,7 @@ class rm(SubParser):
 
             REPO.git.add(all=True)
             REPO.index.commit(f"Removed '{msg}'")
-            console.log(f"[bold red]Removed[default] [bold blue]'{msg}'")
+            console.log(f"[bold red]Removed[/] [bold blue]'{msg}'")
 
         def instance(group):
             msg = str(group)
@@ -251,7 +269,7 @@ class rm(SubParser):
 
             REPO.git.add(all=True)
             REPO.index.commit(f"Removed '{msg}'")
-            console.log(f"[bold red]Removed[default] [bold blue]'{msg}'")
+            console.log(f"[bold red]Removed[/] [bold blue]'{msg}'")
             
         match mode:
             case TargetExtentions.INSTANCE:

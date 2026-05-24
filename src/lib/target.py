@@ -1,7 +1,10 @@
 from pathlib import Path
 from typing import Any, Literal 
-from dataclasses import dataclass, field 
+from dataclasses import dataclass 
 from enum import Enum
+import json
+
+from rich.repr import T
 
 
 
@@ -57,7 +60,7 @@ def get_target_groups(
 
     raw_list            :str            =raw[raw.find('['):raw.rfind(']')+1]
     raw_nolist          :str            =raw.replace(raw_list,'')
-    available_levels    :list           =next(path.walk())[1]
+    available_levels    :list           =[x for x in next(path.walk())[1] if x[0] != '.']
     available_levelsg   :dict           ={level:next((path/level).walk())[1] for level in available_levels}
 
     extentions          :dict[str,tuple]    ={x.name:x.value for x in TargetExtentions if x.value}
@@ -100,7 +103,6 @@ def get_target_groups(
 
     result              :list[TargetGroup]  =[]
     result_remove_list  :list[str]          =[]
-    #   WARNING: Not using symbols elements, can cause trobble if swap symbols
     for group in groups:
         level       :str                        =defaults[0]
         name        :str                        =group[:[group.find(symbols[ind]) if group.count(symbols[ind]) else len(group) for ind in [1,2]][0]]
@@ -126,3 +128,32 @@ def get_target_groups(
                 result_remove_list.append(name)
     result = [x for x in result if x.name not in result_remove_list]
     return result
+def get_available_groups(
+    path            :Path) -> list[TargetGroup]:
+    return get_target_groups("*@*", path, TargetExtentions.GROUP)
+def get_available_branchs(
+    path            :Path) -> list[TargetGroup]:
+    available_groups = get_available_groups(path)
+    return [TargetGroup(x.name, x.level, y, x.instance, TargetExtentions.BRANCH, path) for x in available_groups for y in next(x.path.walk())[1]]
+def get_installed_branchs(
+    path            :Path):
+    available_branchs = get_available_branchs(path)
+    installed_branchs   :list   =[]
+    for group in available_branchs:
+        with open(group.path/"syms.json", 'r') as File:
+            syms   :dict   =json.load(File)
+
+        for original,sym in syms.items():
+            original    =Path().joinpath(group.path,original)
+            sym         =Path(sym).expanduser()
+
+            if sym.exists() and sym.is_symlink() and sym.readlink() == original:
+                installed_branchs.append(group)
+                break
+    return installed_branchs
+
+
+
+
+
+
