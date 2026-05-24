@@ -65,6 +65,8 @@ except: ValueError(f"Please create 'origin' remote in the repo inside '{CONFIG_P
 #       <CLI>
 #
 #   TODO: This part REALLY need some work
+#   may be a good idea separate the cli commands from the commands itself
+#   so then i can call ls from uninstall, etc... (dont repeat code)
 parser  :argparse.ArgumentParser    =argparse.ArgumentParser(
     prog="dfctl",
     description="Dotfiles CLI",
