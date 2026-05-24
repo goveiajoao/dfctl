@@ -279,7 +279,7 @@ class rm(SubParser):
     def setup(self, subparser):
         #   HACK: Funky as fuck the help prop in mode argument
         mode_choices    :list   =[x.name.lower() for x in TargetExtentions if x.name != "LEVEL"]
-        subparser.add_argument("mode",metavar="mode",choices=mode_choices, help=f"{'{'}{','.join(mode_choices)}{'}'}")
+        subparser.add_argument("mode",metavar="mode",choices=mode_choices, help=f"{{{','.join(mode_choices)}}}")
         subparser.add_argument("target",help="<mode> target")
 
 #   TODO:
