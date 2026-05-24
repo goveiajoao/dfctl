@@ -5,9 +5,9 @@ A simple and easy dotfiles control tool
     - [x] Target System
     - [ ] Target Dependencie System
     - [ ] Commands: 
-        - [ ] install
-        - [ ] uninstall
-        - [ ] rm
+        - [x] install
+        - [x] uninstall
+        - [x] rm
         - [ ] mk
         - [ ] ls
         - [ ] checkhealth 
