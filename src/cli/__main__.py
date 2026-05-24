@@ -1,11 +1,10 @@
 import argparse, json 
 from pathlib import Path
 from typing import Callable
-from dataclasses import asdict
+from dataclasses import dataclass, asdict, field
 from shutil import rmtree
 
-import git
-from lib import config
+from git.objects.util import mode_str_to_int
 from lib.config import DefaultConfig
 from lib.parser import SubParser
 from lib.target import TargetExtentions, TargetGroup, get_target_groups
@@ -67,6 +66,7 @@ except: ValueError(f"Please create 'origin' remote in the repo inside '{CONFIG_P
 #       <CLI>
 #
 #   TODO: This part REALLY need some work
+#   IDEA!, implement a "with" supported class for repeated subparsers headers
 parser  :argparse.ArgumentParser    =argparse.ArgumentParser(
     prog="dfctl",
     description="Dotfiles CLI",
@@ -88,57 +88,97 @@ parser.add_argument("--noconfirm", action="store_true", help=f"skip confirmation
 parser.add_argument("--autopull", action="store_false", help=f"auto pull before any local-repo action   ({CONFIG_AUTOPULL})")
 parser.add_argument("--autopush", action="store_false", help=f"auto push after any local-repo action    ({CONFIG_AUTOPUSH})")
 subparsers      :argparse._SubParsersAction     =parser.add_subparsers(required=True)
+@dataclass
+class SubParserFS():
+    mode            :None|TargetExtentions  =None
+    autopullsh      :bool                   =False
+    invert_notfind  :bool                   =False
+    raw_target      :None|str               =None
+    args            :argparse.Namespace     =field(default_factory=lambda :argparse.Namespace())
+    ask             :str                    ="Are you sure you want to proceed"
+    ask_end         :str                    ='?'
+    rich_console    :Console                =console
+    no_ask          :bool                   =False
+    hard_mode       :bool                   =False
+    def __post_init__(self):
+        try:
+            if not self.raw_target: self.raw_target = self.args.target
+        except: pass
+        try:
+            if not self.mode and self.hard_mode: self.mode = TargetExtentions[self.args.mode.upper()]
+            self.args.target_mode = self.mode
+        except:
+            raise ValueError("specify the mode")
+    def __enter__(self):
+        if self.mode: groups = get_target_groups(str(self.raw_target), CONFIG_PATH_DOTS, self.mode, self.invert_notfind)
+        else: raise ValueError("specify the mode")
+
+        self.rich_console.log(f"Selected {[f"{str(x)}" for x in groups]}")
+
+        if (Confirm.ask(f"{self.ask}{self.ask_end}") if not self.args.noconfirm else True) or self.no_ask:
+            return groups
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+    def __call__(self, func):
+        def __deco(*args, **kwargs):
+            self.args = args[1]
+            self.hard_mode = True
+            self.__post_init__()
+
+
+            if args[1].autopull and self.autopullsh:
+                with console.status("[bold green]Pulling from repo...") as status: REPO_REMOTE.pull()
+
+            with self as groups:
+                result      :None|Callable  =None
+                if groups:
+                    self.args.groups = groups
+                    result = func(*args,**kwargs)
+
+            if args[1].autopush and self.autopullsh:
+                with console.status("[bold green]Pushing to repo...") as status: REPO_REMOTE.push()
+            return result
+        return __deco
+
 def run_pass(subparser:argparse._SubParsersAction, **kwargs):
     def __deco(cls):
         cls(subparser.add_parser(cls.__name__, **kwargs))
         return cls
     return __deco
-def autopullsh(func):
-    def __deco(*args, **kwargs):
-        if args[1].autopull:
-            with console.status("[bold green]Pulling from repo...") as status: REPO_REMOTE.pull()
-        result = func(*args,**kwargs)
-        if args[1].autopush:
-            with console.status("[bold green]Pushing to repo...") as status: REPO_REMOTE.push()
-        return result
-    return __deco
 
 
 @run_pass(subparsers)
 class install(SubParser):
+    @SubParserFS(TargetExtentions.GROUP)
     def func(self, args):
-        groups  = get_target_groups(args.target, CONFIG_PATH_DOTS, TargetExtentions.GROUP)
-        console.log(f"Found {[f"{str(x)}" for x in groups]}")
-        confirm = Confirm.ask(f"Warning: This will overwrite local configs. Proceed with installation?") if not args.noconfirm else True
+        groups :list[TargetGroup] =args.groups
+        for group in groups:
+            path    :Path   =Path.joinpath(CONFIG_PATH_DOTS,group.level,group.name,group.branch)
+            with open(path/"syms.json", 'r') as File:
+                syms   :dict   =json.load(File)
 
-        if confirm:
-            for group in groups:
-                path    :Path   =Path.joinpath(CONFIG_PATH_DOTS,group.level,group.name,group.branch)
-                with open(path/"syms.json", 'r') as File:
-                    syms   :dict   =json.load(File)
+            print(f"Installing '{group.name}'...")
+            installed   :list   =[]
+            for original,sym in syms.items():
+                sym         =Path(sym).expanduser()
+                original    =path/original
+                run_status       ="WRITE"
+                
+                while True:
+                    try:
+                        sym.symlink_to(path/original)
+                        installed.append((run_status,sym,original))
+                        break
+                    except FileExistsError:
+                        if sym.is_symlink():
+                            if sym.readlink() == original:
+                                installed.append(("ALREADY",sym,original))
+                                break
+                        sym.unlink() if sym.is_file() else rmtree(sym)
+                        run_status = "OVERWRITE"         
 
-                print(f"Installing '{group.name}'...")
-                installed   :list   =[]
-                for original,sym in syms.items():
-                    sym         =Path(sym).expanduser()
-                    original    =path/original
-                    run_status       ="WRITE"
-                    
-                    while True:
-                        try:
-                            sym.symlink_to(path/original)
-                            installed.append((run_status,sym,original))
-                            break
-                        except FileExistsError:
-                            if sym.is_symlink():
-                                if sym.readlink() == original:
-                                    installed.append(("ALREADY",sym,original))
-                                    break
-                            sym.unlink() if sym.is_file() else rmtree(sym)
-                            run_status = "OVERWRITE"         
-
-                [print(f"    {f'{x[0]}:':<9} ({beautypath(x[1])} > {beautypath(x[2])})") for x in installed]
-                print(f"    Install Completed")
+            [print(f"    {f'{x[0]}:':<9} ({beautypath(x[1])} > {beautypath(x[2])})") for x in installed]
+            print(f"    Install Completed")
 
 
     def setup(self, subparser):
@@ -146,96 +186,76 @@ class install(SubParser):
 
 @run_pass(subparsers)
 class uninstall(SubParser):
+    @SubParserFS(TargetExtentions.GROUP)
     def func(self, args):
-        groups  = get_target_groups(args.target, CONFIG_PATH_DOTS, TargetExtentions.GROUP)
-        console.log(f"Found {[f"{str(x)}" for x in groups]}")
-        confirm = Confirm.ask(f"Are you sure you want to proceed with uninstalling?") if not args.noconfirm else True
+        groups :list[TargetGroup] =args.groups
+        for group in groups:
+            path    :Path   =Path.joinpath(CONFIG_PATH_DOTS,group.level,group.name,group.branch)
+            with open(path/"syms.json", 'r') as File:
+                syms   :dict   =json.load(File)
 
-        if confirm:
-            for group in groups:
-                path    :Path   =Path.joinpath(CONFIG_PATH_DOTS,group.level,group.name,group.branch)
-                with open(path/"syms.json", 'r') as File:
-                    syms   :dict   =json.load(File)
-
-                print(f"Uninstalling '{group.name}'...")
-                uninstalled     :list   =[]
-                for original,sym in syms.items():
-                    sym         =Path.expanduser(Path(sym))
-                    original    =path/original
-                    
-                    try:
-                        sym.unlink()
-                    except FileNotFoundError:
-                        pass
-                    else:
-                        uninstalled.append((sym,original))
-
-                if uninstalled:
-                    [print(f"    ({beautypath(x[0])} > {beautypath(x[1])})") for x in uninstalled]
-                    print(f"    Uninstall Completed")
+            print(f"Uninstalling '{group.name}'...")
+            uninstalled     :list   =[]
+            for original,sym in syms.items():
+                sym         =Path.expanduser(Path(sym))
+                original    =path/original
+                
+                try:
+                    sym.unlink()
+                except FileNotFoundError:
+                    pass
                 else:
-                    print(f"    Already Uninstalled")
+                    uninstalled.append((sym,original))
+
+            if uninstalled:
+                [print(f"    ({beautypath(x[0])} > {beautypath(x[1])})") for x in uninstalled]
+                print(f"    Uninstall Completed")
+            else:
+                print(f"    Already Uninstalled")
 
     def setup(self, subparser):
         subparser.add_argument("target",help="group target")
 
 @run_pass(subparsers)
 class rm(SubParser):
-    @autopullsh
+    @SubParserFS(autopullsh=True)
     def func(self, args):
-        mode    :TargetExtentions   =TargetExtentions[args.mode.upper()]
-        groups  = get_target_groups(args.target, CONFIG_PATH_DOTS, mode)
-        console.log(f"Found {[f"{str(x)}" for x in groups]}")
-        confirm = Confirm.ask(f"Are you sure you want to proceed with removal?") if not args.noconfirm else True
+        groups :list[TargetGroup] =args.groups
+        final_func = self.takebymode(args.target_mode)
+        with console.status("[bold red] Removing..."):
+            for group in groups:
+                final_func(group)
+    def takebymode(self, mode):
+        def default(group:TargetGroup):
+            msg = str(group)
+            rmtree(group.path)
 
-        def takebymode(mode):
-            def group(group:TargetGroup):
-                msg = f"{group.level}@{group.name}"
-                rmtree(CONFIG_PATH_DOTS/group.level/group.name)
+            REPO.git.add(all=True)
+            REPO.index.commit(f"Removed '{msg}'")
+            console.log(f"[bold red]Removed[default] [bold blue]'{msg}'")
 
-                REPO.git.add(all=True)
-                REPO.index.commit(f"Removed '{msg}'")
-                console.log(f"[bold red]Removed[default] [bold blue]'{msg}'")
+        def instance(group):
+            msg = str(group)
 
-            def branch(group):
-                msg = f"{group.level}@{group.name}:{group.branch}"
+            syms        = group.path.parent/"syms.json"
+            instance    = group.path
 
-                rmtree(CONFIG_PATH_DOTS/group.level/group.name/group.branch)
+            #   HACK: FUNKY AS FUCK, opening 2 time just to overwrite, may be a function in json to overwrite
+            with open(syms, 'r') as File:
+                jsonfile = json.load(File)
+            with open(syms, 'w') as File:
+                json.dump({k:v for k,v in jsonfile.items() if k != str(group.instance)},File)
+            instance.unlink() if instance.is_file() else rmtree(instance)
 
-                REPO.git.add(all=True)
-                REPO.index.commit(f"Removed '{msg}'")
-                console.log(f"[bold red]Removed[default] [bold blue]'{msg}'")
-
-            def instance(group):
-                msg = f"{group.level}@{group.name}:{group.branch}/{group.instance}"
-
-                syms        = Path().joinpath(CONFIG_PATH_DOTS,group.level,group.name,group.branch,"syms.json")
-                instance    = Path().joinpath(CONFIG_PATH_DOTS,group.level,group.name,group.branch,str(group.instance))
-
-                #   HACK: FUNKY AS FUCK, opening 2 time just to overwrite, may be a function in json to overwrite
-                with open(syms, 'r') as File:
-                    jsonfile = json.load(File)
-                with open(syms, 'w') as File:
-                    json.dump({k:v for k,v in jsonfile.items() if k != str(group.instance)},File)
-                instance.unlink() if instance.is_file() else rmtree(instance)
-
-                REPO.git.add(all=True)
-                REPO.index.commit(f"Removed '{msg}'")
-                console.log(f"[bold red]Removed[default] [bold blue]'{msg}'")
-                
-            match mode:
-                case TargetExtentions.GROUP:
-                    return group
-                case TargetExtentions.BRANCH:
-                    return branch
-                case TargetExtentions.INSTANCE:
-                    return instance
-            return lambda x:x
-        final_func = takebymode(mode)
-        if confirm:
-            with console.status("[bold red] Removing..."):
-                for group in groups:
-                    final_func(group)
+            REPO.git.add(all=True)
+            REPO.index.commit(f"Removed '{msg}'")
+            console.log(f"[bold red]Removed[default] [bold blue]'{msg}'")
+            
+        match mode:
+            case TargetExtentions.INSTANCE:
+                return instance
+            case _:
+                return default
     def setup(self, subparser):
         #   HACK: Funky as fuck the help prop in mode argument
         mode_choices    :list   =[x.name.lower() for x in TargetExtentions if x.name != "LEVEL"]
@@ -245,14 +265,16 @@ class rm(SubParser):
 #   TODO:
 @run_pass(subparsers)
 class mk(SubParser):
-    @autopullsh
+    @SubParserFS(TargetExtentions.INSTANCE, True, True)
     def func(self, args):
-        groups  = get_target_groups(args.instance, CONFIG_PATH_DOTS, TargetExtentions.INSTANCE, True)
-        console.log(f"Selected {[f"{str(x)}" for x in groups]}")
-        confirm = Confirm.ask(f"Are you sure you want to proceed with creation?") if not args.noconfirm else True
+        groups :list[TargetGroup] =args.groups
+        if len(groups) > 1: raise ValueError("just one group in target for mk")
+        group = groups[0]
+
+        group.path.parent.mkdir(exist_ok=True)
     def setup(self, subparser):
         subparser.add_argument(
-            "instance",
+            "target",
             help="""
             the instance to make (instances start at 0);
             E.G: "User@tmux:main/0" or just "tmux" """)
@@ -263,29 +285,29 @@ class mk(SubParser):
             the path where the instance links (folder or file);
             E.G: "~/.config/tmux" """)
 
-#   TODO:
-@run_pass(subparsers)
-class ls(SubParser):
-    def func(self, args):
-        print(args)
-    def setup(self, subparser):
-        pass
-
-#   TODO:
-@run_pass(subparsers)
-class checkhealth(SubParser):
-    def func(self, args):
-        print(args)
-    def setup(self, subparser):
-        pass
-
-#   TODO:
-@run_pass(subparsers)
-class update(SubParser):
-    def func(self, args):
-        print(args)
-    def setup(self, subparser):
-        pass
+# #   TODO:
+# @run_pass(subparsers)
+# class ls(SubParser):
+#     def func(self, args):
+#         print(args)
+#     def setup(self, subparser):
+#         pass
+#
+# #   TODO:
+# @run_pass(subparsers)
+# class checkhealth(SubParser):
+#     def func(self, args):
+#         print(args)
+#     def setup(self, subparser):
+#         pass
+#
+# #   TODO:
+# @run_pass(subparsers)
+# class update(SubParser):
+#     def func(self, args):
+#         print(args)
+#     def setup(self, subparser):
+#         pass
 
 
 if __name__ == "__main__":

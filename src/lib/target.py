@@ -1,10 +1,7 @@
-import argparse, json, subprocess
 from pathlib import Path
-from abc import ABC, abstractmethod
-from typing import Any, Literal, Callable
-from dataclasses import dataclass, field, asdict
+from typing import Any, Literal 
+from dataclasses import dataclass, field 
 from enum import Enum
-from shutil import rmtree
 
 
 
@@ -16,7 +13,7 @@ class WholeNumber(int):
 
 class TargetExtentions(Enum):
     #NAME       =[Symbol,Default]
-    LEVEL       =('@',"User")
+    LEVEL       =('@',"user")
     GROUP       =None
     BRANCH      =(':',"main")
     INSTANCE    =('/',WholeNumber(0))
@@ -28,6 +25,7 @@ class TargetGroup():
     branch      :str
     instance    :WholeNumber
     range       :TargetExtentions
+    path        :Path
     def __str__(self):
         extentions          :dict[str,tuple]    ={x.name:x.value for x in TargetExtentions if x.value}
         symbols             :list[str]          =[v[0] for v in extentions.values()]
@@ -40,6 +38,14 @@ class TargetGroup():
                 return f"{self.level}{symbols[0]}{self.name}{symbols[1]}{self.branch}"
             case TargetExtentions.INSTANCE:
                 return f"{self.level}{symbols[0]}{self.name}{symbols[1]}{self.branch}{symbols[2]}{self.instance}"
+    def __post_init__(self):
+        extentions          :dict[str,tuple]    ={x.name:x.value for x in TargetExtentions if x.value}
+        symbols             :list[str]          =[v[0] for v in extentions.values()]
+
+        string = str(self)
+        for x in symbols: string = string.replace(x,'/')
+        self.path = self.path/string
+
 
 #   NOTE: I would make that class way nicer if this would be a multifile project
 #   this class is NOT modular, but for the porpuse of this application, it works...
@@ -107,15 +113,15 @@ def get_target_groups(
         branch      :str            =group[group.find(symbols[1])+1 if group.count(symbols[1]) else 0 :
                                            group.find(symbols[2]) if group.count(symbols[2]) else len(group)] if group.count(symbols[1]) else general_branch
         if not invert_notfound and branch not in next((path/level/name).walk())[1]:
-            raise ValueError(f"branch '{branch}' does not exist in group '{level}@{name}'")
+            raise ValueError(f"branch '{branch}' does not exist in group '{level}{symbols[0]}{name}'")
         
         instance    :WholeNumber    =WholeNumber(group[group.find(symbols[2])+1:]) if group.count(symbols[2]) else WholeNumber(general_instance)
         if not invert_notfound and str(instance) not in [y for x in next((path/level/name/branch).walk())[1:] for y in x]:
-            raise ValueError(f"instance '{instance}' does not exist in branch '{level}@{name}:{branch}'")
+            raise ValueError(f"instance '{instance}' does not exist in branch '{level}{symbols[0]}{name}{symbols[1]}{branch}'")
 
         match mode:
             case "add":
-                result.append(TargetGroup(name,level,branch,instance,range))
+                result.append(TargetGroup(name,level,branch,instance,range, path))
             case "remove":
                 result_remove_list.append(name)
     result = [x for x in result if x.name not in result_remove_list]
