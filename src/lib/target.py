@@ -45,8 +45,9 @@ class TargetGroup():
 #   this class is NOT modular, but for the porpuse of this application, it works...
 def get_target_groups(
     raw             :str,
+    path            :Path,
     range           :TargetExtentions,
-    path            :Path):
+    invert_notfound :bool               =False):
 
     raw_list            :str            =raw[raw.find('['):raw.rfind(']')+1]
     raw_nolist          :str            =raw.replace(raw_list,'')
@@ -80,7 +81,7 @@ def get_target_groups(
 
     input_level         :str            =raw[:raw.find(symbols[0])]
     levels              :list           =[input_level] if input_level != '*' else available_levels
-    if input_level not in available_levels and input_level != '*':
+    if input_level not in available_levels and input_level != '*' and not invert_notfound:
         raise ValueError(f"level '{input_level}' does not exist, available ones: {available_levels}")
 
     groups              :None|list      =raw_list[1:len(raw_list)-1].replace(' ','').split(',') if raw_list else [raw[raw.find(symbols[0])+1:raw.rfind(symbols[1])]]

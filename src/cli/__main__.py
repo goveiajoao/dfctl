@@ -3,6 +3,8 @@ from pathlib import Path
 from typing import Callable
 from dataclasses import asdict
 from shutil import rmtree
+
+import git
 from lib import config
 from lib.config import DefaultConfig
 from lib.parser import SubParser
@@ -28,6 +30,7 @@ console = Console()
 #
 #       <Configs-Wrapper>
 #
+#   TODO: Seriously, just make it better...
 CONFIG_FOLDER       :Path   =Path("~/.config/dfctl").expanduser()
 CONFIG_FILE         :Path   =(CONFIG_FOLDER/"config.json")
 if not CONFIG_FOLDER.exists(): CONFIG_FOLDER.mkdir()
@@ -50,12 +53,13 @@ CONFIG_AUTOPUSH     :bool   =CONFIG["autopush"]
 #
 #       <Repo>
 #
+#   TODO: Add clone when dont find the local repo
 try: REPO    :Repo       =Repo(CONFIG_PATH_DOTS)
 except InvalidGitRepositoryError:
-    print(f"Git repo dont exists in '{CONFIG_PATH_DOTS}'\nPlease create it or clone an existing one to start using dfctl"); exit()
+    raise FileExistsError(f"Git repo dont exists in '{CONFIG_PATH_DOTS}'\nPlease create it or clone an existing one to start using dfctl")
 except Exception as e: raise e
 try: REPO_REMOTE    :Remote     =REPO.remote()
-except: print(f"Please create 'origin' remote in the repo inside '{CONFIG_PATH_DOTS}'"); exit()
+except: ValueError(f"Please create 'origin' remote in the repo inside '{CONFIG_PATH_DOTS}'")
 
 
 
@@ -102,9 +106,10 @@ def autopullsh(func):
 @run_pass(subparsers)
 class install(SubParser):
     def func(self, args):
-        groups  = get_target_groups(args.target, range=TargetExtentions.GROUP, path=CONFIG_PATH_DOTS)
+        groups  = get_target_groups(args.target, CONFIG_PATH_DOTS, TargetExtentions.GROUP)
         console.log(f"Found {[f"{str(x)}" for x in groups]}")
         confirm = Confirm.ask(f"Warning: This will overwrite local configs. Proceed with installation?") if not args.noconfirm else True
+
         if confirm:
             for group in groups:
                 path    :Path   =Path.joinpath(CONFIG_PATH_DOTS,group.level,group.name,group.branch)
@@ -141,9 +146,10 @@ class install(SubParser):
 @run_pass(subparsers)
 class uninstall(SubParser):
     def func(self, args):
-        groups  = get_target_groups(args.target, range=TargetExtentions.GROUP, path=CONFIG_PATH_DOTS)
+        groups  = get_target_groups(args.target, CONFIG_PATH_DOTS, TargetExtentions.GROUP)
         console.log(f"Found {[f"{str(x)}" for x in groups]}")
         confirm = Confirm.ask(f"Are you sure you want to proceed with uninstalling?") if not args.noconfirm else True
+
         if confirm:
             for group in groups:
                 path    :Path   =Path.joinpath(CONFIG_PATH_DOTS,group.level,group.name,group.branch)
@@ -178,9 +184,10 @@ class rm(SubParser):
     @autopullsh
     def func(self, args):
         mode    :TargetExtentions   =TargetExtentions[args.mode.upper()]
-        groups  :list[TargetGroup]  =get_target_groups(args.target, mode, path=CONFIG_PATH_DOTS)
+        groups  = get_target_groups(args.target, CONFIG_PATH_DOTS, mode)
         console.log(f"Found {[f"{str(x)}" for x in groups]}")
         confirm = Confirm.ask(f"Are you sure you want to proceed with deletion?") if not args.noconfirm else True
+
         def takebymode(mode):
             def group(group:TargetGroup):
                 msg = f"{group.level}@{group.name}"
@@ -205,6 +212,7 @@ class rm(SubParser):
                 syms        = Path().joinpath(CONFIG_PATH_DOTS,group.level,group.name,group.branch,"syms.json")
                 instance    = Path().joinpath(CONFIG_PATH_DOTS,group.level,group.name,group.branch,str(group.instance))
 
+                #   HACK: FUNKY AS FUCK, opening 2 time just to overwrite, may be a function in json to overwrite
                 with open(syms, 'r') as File:
                     jsonfile = json.load(File)
                 with open(syms, 'w') as File:
@@ -239,7 +247,7 @@ class mk(SubParser):
     @autopullsh
     def func(self, args):
         mode    :TargetExtentions   =TargetExtentions[args.mode.upper()]
-        groups  :list[TargetGroup]  =get_target_groups(args.target, mode, path=CONFIG_PATH_DOTS)
+        groups  = get_target_groups(args.target, CONFIG_PATH_DOTS, mode)
         console.log(f"Found {[f"{str(x)}" for x in groups]}")
         confirm = Confirm.ask(f"Are you sure you want to proceed with creation?") if not args.noconfirm else True
     def setup(self, subparser):
