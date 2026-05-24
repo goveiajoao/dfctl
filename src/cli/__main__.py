@@ -7,10 +7,11 @@ from lib import config
 from lib.config import DefaultConfig
 from lib.parser import SubParser
 from lib.target import TargetExtentions, TargetGroup, get_target_groups
-from lib.misc import ynquestion, beautypath
+from lib.misc import beautypath
 from git import Repo, Remote 
 from git.exc import InvalidGitRepositoryError
 from rich.console import Console
+from rich.prompt import Confirm
 from rich import print
 
 
@@ -102,8 +103,8 @@ def autopullsh(func):
 class install(SubParser):
     def func(self, args):
         groups  = get_target_groups(args.target, range=TargetExtentions.GROUP, path=CONFIG_PATH_DOTS)
-        print(f"{[f"{x.level}@{x.name}" for x in groups]}")
-        confirm = ynquestion(f"Warning: This will overwrite local configs. Proceed with installation?") if not args.noconfirm else True
+        console.log(f"Found {[f"{str(x)}" for x in groups]}")
+        confirm = Confirm.ask(f"Warning: This will overwrite local configs. Proceed with installation?") if not args.noconfirm else True
         if confirm:
             for group in groups:
                 path    :Path   =Path.joinpath(CONFIG_PATH_DOTS,group.level,group.name,group.branch)
@@ -141,8 +142,8 @@ class install(SubParser):
 class uninstall(SubParser):
     def func(self, args):
         groups  = get_target_groups(args.target, range=TargetExtentions.GROUP, path=CONFIG_PATH_DOTS)
-        print(f"{[f"{x.level}@{x.name}" for x in groups]}")
-        confirm = ynquestion(f"Are you sure you want to proceed with uninstalling?") if not args.noconfirm else True
+        console.log(f"Found {[f"{str(x)}" for x in groups]}")
+        confirm = Confirm.ask(f"Are you sure you want to proceed with uninstalling?") if not args.noconfirm else True
         if confirm:
             for group in groups:
                 path    :Path   =Path.joinpath(CONFIG_PATH_DOTS,group.level,group.name,group.branch)
@@ -178,8 +179,8 @@ class rm(SubParser):
     def func(self, args):
         mode    :TargetExtentions   =TargetExtentions[args.mode.upper()]
         groups  :list[TargetGroup]  =get_target_groups(args.target, mode, path=CONFIG_PATH_DOTS)
-        print(f"{[f"{x.level}@{x.name}" for x in groups]}")
-        confirm = ynquestion(f"Are you sure you want to proceed with deletion?") if not args.noconfirm else True
+        console.log(f"Found {[f"{str(x)}" for x in groups]}")
+        confirm = Confirm.ask(f"Are you sure you want to proceed with deletion?") if not args.noconfirm else True
         def takebymode(mode):
             def group(group:TargetGroup):
                 msg = f"{group.level}@{group.name}"
@@ -224,7 +225,7 @@ class rm(SubParser):
             return lambda x:x
         final_func = takebymode(mode)
         if confirm:
-            with console.status("[bold red] Removing...") as status:
+            with console.status("[bold red] Removing..."):
                 for group in groups:
                     final_func(group)
     def setup(self, subparser):
@@ -237,7 +238,10 @@ class rm(SubParser):
 class mk(SubParser):
     @autopullsh
     def func(self, args):
-        print(args)
+        mode    :TargetExtentions   =TargetExtentions[args.mode.upper()]
+        groups  :list[TargetGroup]  =get_target_groups(args.target, mode, path=CONFIG_PATH_DOTS)
+        console.log(f"Found {[f"{str(x)}" for x in groups]}")
+        confirm = Confirm.ask(f"Are you sure you want to proceed with creation?") if not args.noconfirm else True
     def setup(self, subparser):
         subparser.add_argument(
             "instance",
@@ -253,6 +257,13 @@ class mk(SubParser):
 #   TODO:
 @run_pass(subparsers)
 class ls(SubParser):
+    def func(self, args):
+        print(args)
+    def setup(self, subparser):
+        pass
+#   TODO:
+@run_pass(subparsers)
+class check(SubParser):
     def func(self, args):
         print(args)
     def setup(self, subparser):

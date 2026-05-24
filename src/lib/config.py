@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
-from lib.misc import ynquestion, take_value
+from lib.misc import take_value
+from rich.prompt import Confirm
 
 @dataclass
 class DefaultConfig():
@@ -11,10 +12,10 @@ class DefaultConfig():
     autopush    :bool       =field(init=False)
     def __post_init__(self):
         while True:
-            self.install    =ynquestion("Install dfctl?")
-            self.dots_repo  =take_value(ynquestion("Do you have a dotfiles repo?"),lambda :input("Dotfiles repo: "),None)
-            self.dots_path  =take_value(ynquestion("Change dotfiles path? (~/.dotfiles)",False),lambda :input("Path: "),"~/.dotfiles")
-            self.noconfirm  =ynquestion("Enable noconfirm?",False)
-            self.autopull   =ynquestion("Enable autopull?",True) if self.dots_repo else False
-            self.autopush   =ynquestion("Enable noconfirm?",True) if self.dots_repo else False
-            if ynquestion("\nConfirm Configuration?"): break
+            self.install    =Confirm.ask("Install dfctl?")
+            self.dots_repo  =take_value(Confirm.ask("Do you have a dotfiles repo?"),lambda :input("Dotfiles repo: "),None)
+            self.dots_path  =take_value(Confirm.ask("Change dotfiles path? (~/.dotfiles)"),lambda :input("Path: "),"~/.dotfiles")
+            self.noconfirm  =Confirm.ask("Enable noconfirm?")
+            self.autopull   =Confirm.ask("Enable autopull?") if self.dots_repo else False
+            self.autopush   =Confirm.ask("Enable noconfirm?") if self.dots_repo else False
+            if Confirm.ask("\nConfirm Configuration?"): break
