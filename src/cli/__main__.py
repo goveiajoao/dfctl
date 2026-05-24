@@ -184,24 +184,23 @@ class rm(SubParser):
         def takebymode(mode):
             def group(group:TargetGroup):
                 msg = f"{group.level}@{group.name}"
-                console.log(f"[bold red]Removed[default] [bold blue]'{msg}'")
                 rmtree(CONFIG_PATH_DOTS/group.level/group.name)
 
                 REPO.git.add(all=True)
                 REPO.index.commit(f"Removed '{msg}'")
+                console.log(f"[bold red]Removed[default] [bold blue]'{msg}'")
 
             def branch(group):
                 msg = f"{group.level}@{group.name}:{group.branch}"
-                console.log(f"[bold red]Removed[default] [bold blue]'{msg}'")
 
                 rmtree(CONFIG_PATH_DOTS/group.level/group.name/group.branch)
 
                 REPO.git.add(all=True)
                 REPO.index.commit(f"Removed '{msg}'")
+                console.log(f"[bold red]Removed[default] [bold blue]'{msg}'")
 
             def instance(group):
                 msg = f"{group.level}@{group.name}:{group.branch}/{group.instance}"
-                console.log(f"[bold red]Removed[default] [bold blue]'{msg}'")
 
                 syms        = Path().joinpath(CONFIG_PATH_DOTS,group.level,group.name,group.branch,"syms.json")
                 instance    = Path().joinpath(CONFIG_PATH_DOTS,group.level,group.name,group.branch,str(group.instance))
@@ -214,6 +213,7 @@ class rm(SubParser):
 
                 REPO.git.add(all=True)
                 REPO.index.commit(f"Removed '{msg}'")
+                console.log(f"[bold red]Removed[default] [bold blue]'{msg}'")
                 
             match mode:
                 case TargetExtentions.GROUP:
