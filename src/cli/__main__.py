@@ -91,7 +91,7 @@ class SubParserFS():
     mode            :None|TargetExtentions  =None
     autopullsh      :bool                   =False
     invert_notfind  :bool                   =False
-    raw_target      :None|str               =None
+    target      :None|str               =None
     args            :argparse.Namespace     =field(default_factory=lambda :argparse.Namespace())
     ask             :str                    ="Are you sure you want to proceed"
     ask_end         :str                    ='?'
@@ -100,7 +100,7 @@ class SubParserFS():
     hard_mode       :bool                   =False
     def __post_init__(self):
         try:
-            if not self.raw_target: self.raw_target = self.args.target
+            if not self.target: self.target = self.args.target
         except: pass
         try:
             if not self.mode and self.hard_mode: self.mode = TargetExtentions[self.args.mode.upper()]
@@ -108,7 +108,7 @@ class SubParserFS():
         except:
             raise ValueError("specify the mode")
     def __enter__(self):
-        if self.mode: groups = get_target_groups(str(self.raw_target), CONFIG_PATH_DOTS, self.mode, self.invert_notfind)
+        if self.mode: groups = get_target_groups(str(self.target), CONFIG_PATH_DOTS, self.mode, self.invert_notfind)
         else: raise ValueError("specify the mode")
 
         self.rich_console.log(f"Selected {[f"{str(x)}" for x in groups]}")
