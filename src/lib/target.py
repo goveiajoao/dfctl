@@ -81,7 +81,7 @@ def get_target_groups(
 
     input_level         :str            =raw[:raw.find(symbols[0])]
     levels              :list           =[input_level] if input_level != '*' else available_levels
-    if input_level not in available_levels and input_level != '*' and not invert_notfound:
+    if input_level not in available_levels and input_level != '*':
         raise ValueError(f"level '{input_level}' does not exist, available ones: {available_levels}")
 
     groups              :None|list      =raw_list[1:len(raw_list)-1].replace(' ','').split(',') if raw_list else [raw[raw.find(symbols[0])+1:raw.rfind(symbols[1])]]
@@ -94,20 +94,23 @@ def get_target_groups(
 
     result              :list[TargetGroup]  =[]
     result_remove_list  :list[str]          =[]
+    #   WARNING: Not using symbols elements, can cause trobble if swap symbols
     for group in groups:
-        level       :str            =defaults[0]
-        name        :str            =group[:[group.find(symbols[ind]) if group.count(symbols[ind]) else len(group) for ind in [1,2]][0]]
+        level       :str                        =defaults[0]
+        name        :str                        =group[:[group.find(symbols[ind]) if group.count(symbols[ind]) else len(group) for ind in [1,2]][0]]
         mode        :Literal["add","remove"]    ="add" if name[0] != '-' else "remove"; name = name[1:] if name[0] == '-' else name
+
         try: level = next(k for k,v in {k:v for k,v in available_levelsg.items() if k in levels}.items() if name in v)
-        except: raise ValueError(f"group '{name}' does not exist in levels {levels}")
+        except:
+            if not invert_notfound: raise ValueError(f"group '{name}' does not exist in levels {levels}")
 
         branch      :str            =group[group.find(symbols[1])+1 if group.count(symbols[1]) else 0 :
-                                   group.find(symbols[2]) if group.count(symbols[2]) else len(group)] if group.count(symbols[1]) else general_branch
-        if branch not in next((path/level/name).walk())[1]:
+                                           group.find(symbols[2]) if group.count(symbols[2]) else len(group)] if group.count(symbols[1]) else general_branch
+        if not invert_notfound and branch not in next((path/level/name).walk())[1]:
             raise ValueError(f"branch '{branch}' does not exist in group '{level}@{name}'")
         
         instance    :WholeNumber    =WholeNumber(group[group.find(symbols[2])+1:]) if group.count(symbols[2]) else WholeNumber(general_instance)
-        if str(instance) not in [y for x in next((path/level/name/branch).walk())[1:] for y in x]:
+        if not invert_notfound and str(instance) not in [y for x in next((path/level/name/branch).walk())[1:] for y in x]:
             raise ValueError(f"instance '{instance}' does not exist in branch '{level}@{name}:{branch}'")
 
         match mode:
