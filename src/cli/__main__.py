@@ -1,4 +1,5 @@
 import argparse, json 
+from os import path
 from pathlib import Path
 from typing import Callable
 from dataclasses import dataclass, asdict, field
@@ -291,7 +292,36 @@ class mk(SubParser):
         if len(groups) > 1: raise ValueError("just one group in target for mk")
         group = groups[0]
 
-        group.path.parent.mkdir(exist_ok=True)
+        group.path.parent.mkdir(parents=True,exist_ok=True)
+        try:
+            with open(group.path.parent/"syms.json", 'r') as File:
+                syms   :dict   =json.load(File)
+            for original,sym in syms.items():
+                original    =group.path.parent/original
+                sym         =Path(sym).expanduser()
+                if original == group.instance: raise ValueError(f"instance in '{str(group)}' already exists")
+        except:
+            with open(group.path.parent/"syms.json", 'w') as File:
+                json.dump({},File)
+
+
+        original    :Path   =Path(group.path).expanduser()
+        sym         :Path   =Path(args.path).expanduser()
+
+        sym.copy(original)
+        original.unlink() if original.is_file() else rmtree(sym)
+        sym.symlink_to(original, True if original.is_dir else False)
+
+        with open(group.path.parent/"syms.json", 'r') as File:
+            syms   :dict   =json.load(File)
+        with open(group.path.parent/"syms.json", 'w') as File:
+            json.dump({group.instance:str(beautypath(sym))}|syms,File)
+
+
+        REPO.git.add(all=True)
+        REPO.index.commit(f"Created '{str(group)}'")
+
+
     def setup(self, subparser):
         subparser.add_argument(
             "target",
