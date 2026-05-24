@@ -67,29 +67,30 @@ except: ValueError(f"Please create 'origin' remote in the repo inside '{CONFIG_P
 #       <CLI>
 #
 #   TODO: This part REALLY need some work
-parser          :argparse.ArgumentParser        =argparse.ArgumentParser(prog="dfctl",
-                                                                         description="Dotfiles CLI",
-                                                                         color=False,
-                                                                         formatter_class=argparse.RawDescriptionHelpFormatter,
-                                                                         epilog="target:\n"
-                                                                                "  [LEVEL@]([-]GROUP[:BRANCH][/INSTANCE][...] | [-]GROUP[...][:BRANCH][/INSTANCE])\n"
-                                                                                "  elements:\n"
-                                                                                "    LEVEL:     the ground where all your groups will live\n"
-                                                                                "    GROUP:     the dotfile group itself, like 'tmux'\n"
-                                                                                "    BRANCH:    the branch of the group, like 'main', 'secound', ...\n"
-                                                                                "    INSTANCE:  index of a file or folder of the dot\n"
-                                                                                "  comment:\n"
-                                                                                "    Syntax for Lists (...): [a,b,c,d,...]\n"
-                                                                                "    '*' Can be used in LEVEL and GROUP to expand all elements\n"
-                                                                                "    '-' Means Exclude/Negate\n"
-                                                                                "    '<x> target' Means that it is a target that accept info until x, if passed info after x, it will error\n")
+parser  :argparse.ArgumentParser    =argparse.ArgumentParser(
+    prog="dfctl",
+    description="Dotfiles CLI",
+    color=False,
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    epilog="target:\n"
+    "  [LEVEL@]([-]GROUP[:BRANCH][/INSTANCE][...] | [-]GROUP[...][:BRANCH][/INSTANCE])\n"
+    "  elements:\n"
+    "    LEVEL:     the ground where all your groups will live\n"
+    "    GROUP:     the dotfile group itself, like 'tmux'\n"
+    "    BRANCH:    the branch of the group, like 'main', 'secound', ...\n"
+    "    INSTANCE:  index of a file or folder of the dot\n"
+    "  comment:\n"
+    "    Syntax for Lists (...): [a,b,c,d,...]\n"
+    "    '*' Can be used in LEVEL and GROUP to expand all elements\n"
+    "    '-' Means Exclude/Negate\n"
+    "    '<x> target' Means that it is a target that accept info until x, if passed info after x, it will error\n")
 parser.add_argument("--noconfirm", action="store_true", help=f"skip confirmation prompts                ({CONFIG_NOCONFIRM})")
-parser.add_argument("--autopull", action="store_false",  help=f"auto pull before any local-repo action   ({CONFIG_AUTOPULL})")
-parser.add_argument("--autopush", action="store_false",  help=f"auto push after any local-repo action    ({CONFIG_AUTOPUSH})")
+parser.add_argument("--autopull", action="store_false", help=f"auto pull before any local-repo action   ({CONFIG_AUTOPULL})")
+parser.add_argument("--autopush", action="store_false", help=f"auto push after any local-repo action    ({CONFIG_AUTOPUSH})")
 subparsers      :argparse._SubParsersAction     =parser.add_subparsers(required=True)
-def run_pass(subparser:argparse._SubParsersAction):
+def run_pass(subparser:argparse._SubParsersAction, **kwargs):
     def __deco(cls):
-        cls(subparser.add_parser(cls.__name__))
+        cls(subparser.add_parser(cls.__name__, **kwargs))
         return cls
     return __deco
 def autopullsh(func):
@@ -178,7 +179,6 @@ class uninstall(SubParser):
     def setup(self, subparser):
         subparser.add_argument("target",help="group target")
 
-#   TODO:
 @run_pass(subparsers)
 class rm(SubParser):
     @autopullsh
@@ -186,7 +186,7 @@ class rm(SubParser):
         mode    :TargetExtentions   =TargetExtentions[args.mode.upper()]
         groups  = get_target_groups(args.target, CONFIG_PATH_DOTS, mode)
         console.log(f"Found {[f"{str(x)}" for x in groups]}")
-        confirm = Confirm.ask(f"Are you sure you want to proceed with deletion?") if not args.noconfirm else True
+        confirm = Confirm.ask(f"Are you sure you want to proceed with removal?") if not args.noconfirm else True
 
         def takebymode(mode):
             def group(group:TargetGroup):
@@ -241,14 +241,14 @@ class rm(SubParser):
         mode_choices    :list   =[x.name.lower() for x in TargetExtentions if x.name != "LEVEL"]
         subparser.add_argument("mode",metavar="mode",choices=mode_choices, help=f"{'{'}{','.join(mode_choices)}{'}'}")
         subparser.add_argument("target",help="<mode> target")
+
 #   TODO:
 @run_pass(subparsers)
 class mk(SubParser):
     @autopullsh
     def func(self, args):
-        mode    :TargetExtentions   =TargetExtentions[args.mode.upper()]
-        groups  = get_target_groups(args.target, CONFIG_PATH_DOTS, mode)
-        console.log(f"Found {[f"{str(x)}" for x in groups]}")
+        groups  = get_target_groups(args.instance, CONFIG_PATH_DOTS, TargetExtentions.INSTANCE, True)
+        console.log(f"Selected {[f"{str(x)}" for x in groups]}")
         confirm = Confirm.ask(f"Are you sure you want to proceed with creation?") if not args.noconfirm else True
     def setup(self, subparser):
         subparser.add_argument(
@@ -262,6 +262,7 @@ class mk(SubParser):
             help="""
             the path where the instance links (folder or file);
             E.G: "~/.config/tmux" """)
+
 #   TODO:
 @run_pass(subparsers)
 class ls(SubParser):
@@ -269,9 +270,18 @@ class ls(SubParser):
         print(args)
     def setup(self, subparser):
         pass
+
 #   TODO:
 @run_pass(subparsers)
-class check(SubParser):
+class checkhealth(SubParser):
+    def func(self, args):
+        print(args)
+    def setup(self, subparser):
+        pass
+
+#   TODO:
+@run_pass(subparsers)
+class update(SubParser):
     def func(self, args):
         print(args)
     def setup(self, subparser):
