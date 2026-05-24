@@ -147,13 +147,14 @@ def run_pass(subparser:argparse._SubParsersAction, **kwargs):
     return __deco
 
 
+#   TODO: Add check if other branch is not already installed
 @run_pass(subparsers)
 class install(SubParser):
-    @SubParserFS(TargetExtentions.GROUP)
+    @SubParserFS(TargetExtentions.BRANCH)
     def func(self, args):
         groups :list[TargetGroup] =args.groups
         for group in groups:
-            path    :Path   =Path.joinpath(CONFIG_PATH_DOTS,group.level,group.name,group.branch)
+            path    :Path   =group.path
             with open(path/"syms.json", 'r') as File:
                 syms   :dict   =json.load(File)
 
@@ -177,27 +178,28 @@ class install(SubParser):
                         sym.unlink() if sym.is_file() else rmtree(sym)
                         run_status = "OVERWRITE"         
 
-            [print(f"    {f'{x[0]}:':<9} ({beautypath(x[1])} > {beautypath(x[2])})") for x in installed]
+            for x in installed: print(f"    {f'{x[0]}:':<9} ({beautypath(x[1])} > {beautypath(x[2])})")
             print(f"    Install Completed")
 
 
     def setup(self, subparser):
         subparser.add_argument("target",help="group target")
 
+#   TODO: Will need to be TE.GROUP and take the branch part from list of installed ones
 @run_pass(subparsers)
 class uninstall(SubParser):
-    @SubParserFS(TargetExtentions.GROUP)
+    @SubParserFS(TargetExtentions.BRANCH)
     def func(self, args):
         groups :list[TargetGroup] =args.groups
         for group in groups:
-            path    :Path   =Path.joinpath(CONFIG_PATH_DOTS,group.level,group.name,group.branch)
+            path    :Path   =group.path
             with open(path/"syms.json", 'r') as File:
                 syms   :dict   =json.load(File)
 
             print(f"Uninstalling '{group.name}'...")
             uninstalled     :list   =[]
             for original,sym in syms.items():
-                sym         =Path.expanduser(Path(sym))
+                sym         =Path(sym).expanduser()
                 original    =path/original
                 
                 try:
@@ -208,7 +210,7 @@ class uninstall(SubParser):
                     uninstalled.append((sym,original))
 
             if uninstalled:
-                [print(f"    ({beautypath(x[0])} > {beautypath(x[1])})") for x in uninstalled]
+                for x in uninstalled: print(f"    ({beautypath(x[0])} > {beautypath(x[1])})")
                 print(f"    Uninstall Completed")
             else:
                 print(f"    Already Uninstalled")
