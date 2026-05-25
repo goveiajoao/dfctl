@@ -10,7 +10,7 @@ A simple and easy dotfiles control tool
         - [x] mk
         - [x] ls
         - [x] pull/push
-    - [ ] Docs 
+    - [ ] man/help
     - [ ] pyproject.toml
 - Future Ideas:
     - [ ] Target Dependencie System

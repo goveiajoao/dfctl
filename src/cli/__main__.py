@@ -333,6 +333,7 @@ class mk(SubParser):
             the path where the instance links (folder or file);
             E.G: "~/.config/tmux" """)
 
+@run_pass(subparsers)
 class ls(SubParser):
     def func(self, args):
         groups                  :list[TargetGroup]          =get_available_groups(CONFIG_PATH_DOTS)
