@@ -27,4 +27,4 @@ requires = ["setuptools >= 77.0.3"]
 build-backend = "setuptools.build_meta"
 
 [project.scripts]
-dfctl = "cli:main"
+dfctl = "dfctl.cli:main"
