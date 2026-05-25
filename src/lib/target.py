@@ -49,9 +49,6 @@ class TargetGroup():
         for x in symbols: string = string.replace(x,'/')
         self.path = self.path/string
 
-
-#   NOTE: I would make that class way nicer if this would be a multifile project
-#   this class is NOT modular, but for the porpuse of this application, it works...
 def get_target_groups(
     raw                 :str,
     path                :Path,

@@ -262,7 +262,6 @@ class rm(SubParser):
             syms        = group.path.parent/"syms.json"
             instance    = group.path
 
-            #   HACK: FUNKY AS FUCK, opening 2 time just to overwrite, may be a function in json to overwrite
             with open(syms, 'r') as File:
                 jsonfile = json.load(File)
             with open(syms, 'w') as File:
@@ -283,7 +282,6 @@ class rm(SubParser):
         subparser.add_argument("mode",metavar="mode",choices=mode_choices, help=f"{{{','.join(mode_choices)}}}")
         subparser.add_argument("target",help="<mode> target")
 
-#   TODO:
 @run_pass(subparsers)
 class mk(SubParser):
     @SubParserFS(TargetExtentions.INSTANCE, True, True)
@@ -335,8 +333,6 @@ class mk(SubParser):
             the path where the instance links (folder or file);
             E.G: "~/.config/tmux" """)
 
-#   TODO:
-@run_pass(subparsers)
 class ls(SubParser):
     def func(self, args):
         groups                  :list[TargetGroup]          =get_available_groups(CONFIG_PATH_DOTS)
@@ -364,7 +360,6 @@ class ls(SubParser):
     def setup(self, subparser):
         pass
 
-#   TODO:
 @run_pass(subparsers)
 class pull(SubParser):
     def func(self, args):
@@ -372,7 +367,6 @@ class pull(SubParser):
     def setup(self, subparser):
         pass
 
-#   TODO:
 @run_pass(subparsers)
 class push(SubParser):
     def func(self, args):
