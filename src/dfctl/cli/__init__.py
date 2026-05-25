@@ -1,14 +1,13 @@
 import argparse, json 
-from operator import le
 from pathlib import Path
 from typing import Callable
 from dataclasses import dataclass, asdict, field
 from shutil import rmtree
 from collections import defaultdict
-from lib.config import DefaultConfig
-from lib.parser import SubParser
-from lib.target import TargetExtentions, TargetGroup, WholeNumber, get_target_groups, get_available_groups, get_installed_branchs
-from lib.misc import beautypath
+from dfctl.lib.config import DefaultConfig
+from dfctl.lib.parser import SubParser
+from dfctl.lib.target import TargetExtentions, TargetGroup, get_target_groups, get_available_groups, get_installed_branchs
+from dfctl.lib.misc import beautypath
 from git import Repo, Remote 
 from git.exc import InvalidGitRepositoryError
 from rich.console import Console

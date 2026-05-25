@@ -18,7 +18,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+dfctl.lib/
 lib64/
 parts/
 sdist/
