@@ -53,10 +53,10 @@ class TargetGroup():
 #   NOTE: I would make that class way nicer if this would be a multifile project
 #   this class is NOT modular, but for the porpuse of this application, it works...
 def get_target_groups(
-    raw             :str,
-    path            :Path,
-    range           :TargetExtentions,
-    invert_notfound :bool               =False):
+    raw                 :str,
+    path                :Path,
+    range               :TargetExtentions,
+    invert_notfound     :bool               =False):
 
     raw_list            :str            =raw[raw.find('['):raw.rfind(']')+1]
     raw_nolist          :str            =raw.replace(raw_list,'')
