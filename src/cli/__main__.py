@@ -378,6 +378,10 @@ class push(SubParser):
         pass
 
 
-if __name__ == "__main__":
+def main():
+    global parser, args
     args = parser.parse_args()
     args.func(args)
+
+if __name__ == "__main__":
+    main()
