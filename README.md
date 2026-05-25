@@ -3,16 +3,17 @@ A simple and easy dotfiles control tool
 
 - TODO:
     - [x] Target System
-    - [ ] Target Dependencie System
-    - [ ] Commands: 
+    - [x] Commands: 
         - [x] install
         - [x] uninstall
         - [x] rm
         - [x] mk
         - [x] ls
-        - [ ] checkhealth 
-        - [ ] update 
+        - [x] pull/push
     - [ ] Docs 
     - [ ] pyproject.toml
+- Future Ideas:
+    - [ ] Target Dependencie System
+    - [ ] checkhealth
 - After:
-    Just review the code and add needed features
+    - Just review the code and add needed features
