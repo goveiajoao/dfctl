@@ -8,9 +8,11 @@ A simple and easy dotfiles control tool
         - [x] install
         - [x] uninstall
         - [x] rm
-        - [ ] mk
-        - [ ] ls
+        - [x] mk
+        - [x] ls
         - [ ] checkhealth 
         - [ ] update 
     - [ ] Docs 
     - [ ] pyproject.toml
+- After:
+    Just review the code and add needed features

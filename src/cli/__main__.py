@@ -1,18 +1,19 @@
 import argparse, json 
-from os import path
+from operator import le
 from pathlib import Path
 from typing import Callable
 from dataclasses import dataclass, asdict, field
 from shutil import rmtree
-
+from collections import defaultdict
 from lib.config import DefaultConfig
 from lib.parser import SubParser
-from lib.target import TargetExtentions, TargetGroup, get_target_groups, get_available_branchs, get_installed_branchs
+from lib.target import TargetExtentions, TargetGroup, WholeNumber, get_target_groups, get_available_groups, get_installed_branchs
 from lib.misc import beautypath
 from git import Repo, Remote 
 from git.exc import InvalidGitRepositoryError
 from rich.console import Console
 from rich.prompt import Confirm
+from rich.tree import Tree
 from rich import print
 
 
@@ -335,29 +336,50 @@ class mk(SubParser):
             the path where the instance links (folder or file);
             E.G: "~/.config/tmux" """)
 
-# #   TODO:
-# @run_pass(subparsers)
-# class ls(SubParser):
-#     def func(self, args):
-#         print(args)
-#     def setup(self, subparser):
-#         pass
-#
-# #   TODO:
-# @run_pass(subparsers)
-# class checkhealth(SubParser):
-#     def func(self, args):
-#         print(args)
-#     def setup(self, subparser):
-#         pass
-#
-# #   TODO:
-# @run_pass(subparsers)
-# class update(SubParser):
-#     def func(self, args):
-#         print(args)
-#     def setup(self, subparser):
-#         pass
+#   TODO:
+@run_pass(subparsers)
+class ls(SubParser):
+    def func(self, args):
+        groups                  :list[TargetGroup]          =get_available_groups(CONFIG_PATH_DOTS)
+        installed_branchs       :list[TargetGroup]          =get_installed_branchs(CONFIG_PATH_DOTS)
+        installed_groups        :dict[str,TargetGroup]      ={}
+        for branch in installed_branchs: installed_groups[branch.name] = branch
+
+        levelsg     :defaultdict[str,list[TargetGroup]]    =defaultdict(list)
+        for group in groups: levelsg[group.level].append(group)
+
+        for k,v in levelsg.items():
+            tree = Tree(k)
+            for group in v:
+                nm_group = tree.add(f"{'*' if group.name in installed_groups else ''}{group.name}")
+                for branch in next(group.path.walk())[1]:
+                    status = ''
+                    try: status = '*' if installed_groups[group.name].branch == branch else status
+                    except: pass
+
+                    nm_branch = nm_group.add(f"{status}{branch}")
+                    instances = [y for x in next((group.path/branch).walk())[1:] for y in x]
+                    for instance in instances:
+                        nm_branch.add(instance)
+            print(tree)
+    def setup(self, subparser):
+        pass
+
+#   TODO:
+@run_pass(subparsers)
+class checkhealth(SubParser):
+    def func(self, args):
+        print(args)
+    def setup(self, subparser):
+        pass
+
+#   TODO:
+@run_pass(subparsers)
+class update(SubParser):
+    def func(self, args):
+        print(args)
+    def setup(self, subparser):
+        pass
 
 
 if __name__ == "__main__":

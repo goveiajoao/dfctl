@@ -136,7 +136,7 @@ def get_available_branchs(
     available_groups = get_available_groups(path)
     return [TargetGroup(x.name, x.level, y, x.instance, TargetExtentions.BRANCH, path) for x in available_groups for y in next(x.path.walk())[1]]
 def get_installed_branchs(
-    path            :Path):
+    path            :Path) -> list[TargetGroup]:
     available_branchs = get_available_branchs(path)
     installed_branchs   :list   =[]
     for group in available_branchs:
