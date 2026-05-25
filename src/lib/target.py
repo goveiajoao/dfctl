@@ -151,9 +151,3 @@ def get_installed_branchs(
                 installed_branchs.append(group)
                 break
     return installed_branchs
-
-
-
-
-
-

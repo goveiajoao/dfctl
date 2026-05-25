@@ -279,7 +279,6 @@ class rm(SubParser):
             case _:
                 return default
     def setup(self, subparser):
-        #   HACK: Funky as fuck the help prop in mode argument
         mode_choices    :list   =[x.name.lower() for x in TargetExtentions if x.name != "LEVEL"]
         subparser.add_argument("mode",metavar="mode",choices=mode_choices, help=f"{{{','.join(mode_choices)}}}")
         subparser.add_argument("target",help="<mode> target")
@@ -367,17 +366,19 @@ class ls(SubParser):
 
 #   TODO:
 @run_pass(subparsers)
-class checkhealth(SubParser):
+class pull(SubParser):
     def func(self, args):
-        print(args)
+        with console.status("[bold green]Pulling from repo...") as status: REPO_REMOTE.pull()
     def setup(self, subparser):
         pass
 
 #   TODO:
 @run_pass(subparsers)
-class update(SubParser):
+class push(SubParser):
     def func(self, args):
-        print(args)
+        REPO.git.add(all=True)
+        REPO.index.commit(f"Update")
+        with console.status("[bold green]Pushing to repo...") as status: REPO_REMOTE.push()
     def setup(self, subparser):
         pass
 
