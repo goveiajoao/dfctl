@@ -14,7 +14,7 @@ A simple and easy dotfiles control tool
     - [ ] elevate for system dots
     - [x] pyproject.toml
 - Future Ideas:
-    - [ ] Target Dependencie System
+    - [ ] Group/Branch Dependencie System
     - [ ] checkhealth
 - After:
     - Just review the code and add needed features
