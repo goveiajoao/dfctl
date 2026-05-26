@@ -16,13 +16,9 @@ from rich.tree import Tree
 from dfctl.lib.config import DefaultConfig
 from dfctl.lib.misc import beautypath
 from dfctl.lib.parser import SubParser
-from dfctl.lib.target import (
-    TargetExtentions,
-    TargetGroup,
-    get_available_groups,
-    get_installed_branchs,
-    get_target_groups,
-)
+from dfctl.lib.target import (TargetExtentions, TargetGroup,
+                              get_available_groups, get_installed_branchs,
+                              get_target_groups)
 
 #
 #       <Rich>
@@ -71,7 +67,7 @@ except Exception as e:
     raise e
 try:
     REPO_REMOTE: Remote = REPO.remote()
-except:
+except Exception:
     ValueError(f"Please create 'origin' remote in the repo inside '{CONFIG_PATH_DOTS}'")
 
 
@@ -170,7 +166,7 @@ class SubParserFS:
             self.__post_init__()
 
             if args[1].autopull and self.autopullsh:
-                with console.status("[bold green]Pulling from repo...") as status:
+                with console.status("[bold green]Pulling from repo..."):
                     REPO_REMOTE.pull()
 
             with self as groups:
@@ -180,7 +176,7 @@ class SubParserFS:
                     result = func(*args, **kwargs)
 
             if args[1].autopush and self.autopullsh:
-                with console.status("[bold green]Pushing to repo...") as status:
+                with console.status("[bold green]Pushing to repo..."):
                     REPO_REMOTE.push()
             return result
 
@@ -247,7 +243,7 @@ class install(SubParser):
                 console.log(f"[bold green]Installed[/] [bold blue]'{str(group)}'")
                 for x in installed:
                     console.log(f"\t{x[3]}{f'{x[0]}[/]':<9} ({beautypath(x[1])} > {
-                            beautypath(x[2])})")
+                        beautypath(x[2])})")
 
     def setup(self, subparser):
         subparser.add_argument("target", help="group target")
@@ -444,7 +440,7 @@ class ls(SubParser):
                             if installed_groups[group.name].branch == branch
                             else status
                         )
-                    except:
+                    except Exception:
                         pass
 
                     nm_branch = nm_group.add(f"{status}{branch}")
@@ -452,7 +448,8 @@ class ls(SubParser):
                         y for x in next((group.path / branch).walk())[1:] for y in x
                     ]
                     for instance in instances:
-                        nm_branch.add(instance)
+                        if instance not in ["syms.json"]:
+                            nm_branch.add(instance)
             print(tree)
 
     def setup(self, subparser):
@@ -462,7 +459,7 @@ class ls(SubParser):
 @run_pass(subparsers)
 class pull(SubParser):
     def func(self, args):
-        with console.status("[bold green]Pulling from repo...") as status:
+        with console.status("[bold green]Pulling from repo..."):
             REPO_REMOTE.pull()
 
     def setup(self, subparser):
@@ -473,8 +470,8 @@ class pull(SubParser):
 class push(SubParser):
     def func(self, args):
         REPO.git.add(all=True)
-        REPO.index.commit(f"Update")
-        with console.status("[bold green]Pushing to repo...") as status:
+        REPO.index.commit("Update")
+        with console.status("[bold green]Pushing to repo..."):
             REPO_REMOTE.push()
 
     def setup(self, subparser):

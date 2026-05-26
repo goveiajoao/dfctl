@@ -4,8 +4,6 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
 
-from rich.repr import T
-
 
 class WholeNumber(int):
 
@@ -18,7 +16,7 @@ class WholeNumber(int):
 
 
 class TargetExtentions(Enum):
-    # NAME       =[Symbol,Default]
+    # NAME = [Symbol,Default]
     LEVEL = ("@", "user")
     GROUP = None
     BRANCH = (":", "main")
