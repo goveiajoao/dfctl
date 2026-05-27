@@ -1,16 +1,21 @@
 import json
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable
 
+from git import Remote, Repo
 from rich.prompt import Confirm
 
-from dfctl.lib.misc import take_value
+from dfctl.lib.git import take_remote, take_repo
+from dfctl.lib.misc import beautypath, take_value
 
 
 @dataclass
 class Config:
+    __exclude = ["__exclude", "path", "repo", "remote"]
     path: Path
+    repo: Repo = field(init=False)
+    remote: Remote = field(init=False)
 
     dots_repo: None | str | Callable = field(
         default_factory=lambda: lambda: take_value(
@@ -20,7 +25,7 @@ class Config:
         )
     )
 
-    dots_path: str | Callable = field(
+    dots_path: str | Path | Callable = field(
         default_factory=lambda: lambda: take_value(
             Confirm.ask("Change dotfiles path? (~/.dotfiles)"),
             lambda: input("Path: "),
@@ -53,13 +58,15 @@ class Config:
 
         with open(self.path, "r") as File:
             load_config: dict = json.load(File)
-
-        for k, v in asdict(self).items():
-            if k not in load_config and k != "path":
+        for k, v in vars(self).items():
+            if k not in load_config and k not in self.__exclude:
                 load_config[k] = v()
 
-            if k != "path":
+            if k not in self.__exclude:
                 self[k] = load_config[k]
-
         with open(self.path, "w") as File:
             json.dump(load_config, File)
+
+        self["dots_path"] = Path(self["dots_path"]).expanduser()
+        self.repo = take_repo(self["dots_repo"], self["dots_path"])
+        self.remote = take_remote(self.repo)
