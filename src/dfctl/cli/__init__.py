@@ -4,26 +4,6 @@ from pathlib import Path
 import dfctl.cli.cmd as cmd
 from dfctl.lib.config import Config
 
-#
-# class pull(SubParser):
-#     def func(self, args):
-#         with console.status("[bold green]Pulling from repo..."):
-#             REPO_REMOTE.pull()
-#
-#     def setup(self, subparser):
-#         pass
-#
-#
-# class push(SubParser):
-#     def func(self, args):
-#         REPO.git.add(all=True)
-#         REPO.index.commit("Update")
-#         with console.status("[bold green]Pushing to repo..."):
-#             REPO_REMOTE.push()
-#
-#     def setup(self, subparser):
-#         pass
-
 
 def main():
     CONFIG: Config = Config(Path("~/.config/dfctl/config.json").expanduser())
@@ -62,9 +42,6 @@ def main():
     )
     subparsers: argparse._SubParsersAction = parser.add_subparsers(required=True)
 
-    #
-    #   <CMDs>
-    #
     cmd.init(subparsers, CONFIG)
     args = parser.parse_args()
     args.func(args)
