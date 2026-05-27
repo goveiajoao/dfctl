@@ -1,4 +1,7 @@
-from dataclasses import dataclass, field
+import json
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+from typing import Callable
 
 from rich.prompt import Confirm
 
@@ -6,31 +9,57 @@ from dfctl.lib.misc import take_value
 
 
 @dataclass
-class DefaultConfig:
-    install: bool = field(init=False)
-    dots_repo: None | str = field(init=False)
-    dots_path: str = field(init=False)
-    noconfirm: bool = field(init=False)
-    autopull: bool = field(init=False)
-    autopush: bool = field(init=False)
+class Config:
+    path: Path
+
+    dots_repo: None | str | Callable = field(
+        default_factory=lambda: lambda: take_value(
+            Confirm.ask("Do you have a dotfiles repo?"),
+            lambda: input("Dotfiles repo: "),
+            None,
+        )
+    )
+
+    dots_path: str | Callable = field(
+        default_factory=lambda: lambda: take_value(
+            Confirm.ask("Change dotfiles path? (~/.dotfiles)"),
+            lambda: input("Path: "),
+            "~/.dotfiles",
+        )
+    )
+
+    noconfirm: bool | Callable = field(
+        default_factory=lambda: lambda: Confirm.ask("Enable noconfirm?")
+    )
+
+    autopull: bool | Callable = field(
+        default_factory=lambda: lambda: Confirm.ask("Enable autopull?")
+    )
+
+    autopush: bool | Callable = field(
+        default_factory=lambda: lambda: Confirm.ask("Enable autopush?")
+    )
+
+    def __setitem__(self, name, value):
+        super().__setattr__(name, value)
+
+    def __getitem__(self, name):
+        return self.__getattribute__(name)
 
     def __post_init__(self):
-        while True:
-            self.install = Confirm.ask("Install dfctl?")
-            self.dots_repo = take_value(
-                Confirm.ask("Do you have a dotfiles repo?"),
-                lambda: input("Dotfiles repo: "),
-                None,
-            )
-            self.dots_path = take_value(
-                Confirm.ask("Change dotfiles path? (~/.dotfiles)"),
-                lambda: input("Path: "),
-                "~/.dotfiles",
-            )
-            self.noconfirm = Confirm.ask("Enable noconfirm?")
-            self.autopull = Confirm.ask("Enable autopull?") if self.dots_repo else False
-            self.autopush = (
-                Confirm.ask("Enable noconfirm?") if self.dots_repo else False
-            )
-            if Confirm.ask("\nConfirm Configuration?"):
-                break
+        if not self.path.exists():
+            with open(self.path, "w") as File:
+                json.dump({}, File)
+
+        with open(self.path, "r") as File:
+            load_config: dict = json.load(File)
+
+        for k, v in asdict(self).items():
+            if k not in load_config and k != "path":
+                load_config[k] = v()
+
+            if k != "path":
+                self[k] = load_config[k]
+
+        with open(self.path, "w") as File:
+            json.dump(load_config, File)

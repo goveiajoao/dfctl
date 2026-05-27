@@ -13,12 +13,16 @@ from rich.console import Console
 from rich.prompt import Confirm
 from rich.tree import Tree
 
-from dfctl.lib.config import DefaultConfig
+from dfctl.lib.config import Config
 from dfctl.lib.misc import beautypath
 from dfctl.lib.parser import SubParser
-from dfctl.lib.target import (TargetExtentions, TargetGroup,
-                              get_available_groups, get_installed_branchs,
-                              get_target_groups)
+from dfctl.lib.target import (
+    TargetExtentions,
+    TargetGroup,
+    get_available_groups,
+    get_installed_branchs,
+    get_target_groups,
+)
 
 #
 #       <Rich>
@@ -31,21 +35,7 @@ error_console = Console(stderr=True, style="bold red")
 #       <Configs-Wrapper>
 #
 #   TODO: Seriously, just make it better...
-CONFIG_FOLDER: Path = Path("~/.config/dfctl").expanduser()
-CONFIG_FILE: Path = CONFIG_FOLDER / "config.json"
-if not CONFIG_FOLDER.exists():
-    CONFIG_FOLDER.mkdir()
-if not CONFIG_FILE.exists():
-    print(f"Creating config file in {CONFIG_FILE} with default config")
-    DEFAULT_CONFIG = {
-        k: v() if isinstance(v, Callable) else v
-        for k, v in asdict(DefaultConfig()).items()
-    }
-    with open(CONFIG_FILE, "w") as File:
-        json.dump(DEFAULT_CONFIG, File, indent=4)
-with open(CONFIG_FILE, "r") as File:
-    CONFIG: dict = json.load(File)
-CONFIG_INSTALL: bool = CONFIG["install"]
+CONFIG: Config = Config(Path("~/.config/dfctl/config.json").expanduser())
 CONFIG_DOTS_REPO: str = CONFIG["dots_repo"]
 CONFIG_PATH_DOTS: Path = Path(CONFIG["dots_path"]).expanduser()
 CONFIG_NOCONFIRM: bool = CONFIG["noconfirm"]
@@ -130,13 +120,13 @@ class SubParserFS:
         try:
             if not self.target:
                 self.target = self.args.target
-        except:
+        except Exception:
             pass
         try:
             if not self.mode and self.hard_mode:
                 self.mode = TargetExtentions[self.args.mode.upper()]
             self.args.target_mode = self.mode
-        except:
+        except Exception:
             raise ValueError("specify the mode")
 
     def __enter__(self):
