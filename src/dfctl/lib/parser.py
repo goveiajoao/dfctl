@@ -1,10 +1,9 @@
 import argparse
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from git import Remote, Repo
 from rich.console import Console
 from rich.prompt import Confirm
 
@@ -39,12 +38,21 @@ class SubParser(ABC):
             self._args: argparse.Namespace
 
         def __enter__(self):
-            try:
-                if not self.setup.mode:
+            if not self.setup.mode:
+                try:
                     if self._args.mode:
                         self.setup.mode = TargetExtentions[self._args.mode.upper()]
                     else:
                         raise ValueError("specify the mode")
+                except Exception:
+                    pass
+            try:
+                if self._args.target:
+                    pass
+            except Exception:
+                return None
+
+            if self._args.target and self.setup.mode:
                 groups = get_target_groups(
                     self._args.target,
                     Path(self.config["dots_path"]).expanduser(),
@@ -62,8 +70,6 @@ class SubParser(ABC):
                     else True
                 ):
                     return groups
-            except Exception:
-                pass
 
         def __exit__(self, exc_type, exc_val, exc_tb):
             pass
