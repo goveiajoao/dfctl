@@ -1,8 +1,12 @@
 import json
+import os
+import sys
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
+
+import elevate
 
 
 class WholeNumber(int):
@@ -60,7 +64,11 @@ class TargetGroup:
 
 
 def get_target_groups(
-    raw: str, path: Path, range: TargetExtentions, invert_notfound: bool = False
+    raw: str,
+    path: Path,
+    range: TargetExtentions,
+    invert_notfound: bool = False,
+    elevate_levels: tuple = ("system",),
 ):
 
     raw_list: str = raw[raw.find("[") : raw.rfind("]") + 1]
@@ -109,6 +117,13 @@ def get_target_groups(
         raise ValueError(
             f"level '{input_level}' does not exist, available ones: {available_levels}"
         )
+    if symbols[0] in raw_list:
+        raise ValueError("set the level outside the list")
+
+    if input_level in elevate_levels:
+        if os.getuid() != 0:
+            print(sys.argv)
+            elevate.elevate()
 
     groups: None | list = (
         raw_list[1 : len(raw_list) - 1].replace(" ", "").split(",")
@@ -128,7 +143,7 @@ def get_target_groups(
     result: list[TargetGroup] = []
     result_remove_list: list[str] = []
     for group in groups:
-        level: str = defaults[0]
+        level: str = input_level
         name: str = group[
             : [
                 group.find(symbols[ind]) if group.count(symbols[ind]) else len(group)
@@ -146,7 +161,7 @@ def get_target_groups(
                 }.items()
                 if name in v
             )
-        except:
+        except Exception:
             if not invert_notfound:
                 raise ValueError(f"group '{name}' does not exist in levels {levels}")
 
@@ -181,6 +196,7 @@ def get_target_groups(
                 result.append(TargetGroup(name, level, branch, instance, range, path))
             case "remove":
                 result_remove_list.append(name)
+
     result = [x for x in result if x.name not in result_remove_list]
     return result
 

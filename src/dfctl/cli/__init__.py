@@ -6,7 +6,9 @@ from dfctl.lib.config import Config
 
 
 def main():
+    print("AFTER CONFIG")
     CONFIG: Config = Config(Path("~/.config/dfctl/config.json").expanduser())
+    print("BEFORE CONFIG")
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         prog="dfctl",
         description="Dotfiles CLI",
