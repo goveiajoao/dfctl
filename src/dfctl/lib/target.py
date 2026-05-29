@@ -122,8 +122,8 @@ def get_target_groups(
 
     if input_level in elevate_levels:
         if os.getuid() != 0:
-            print(sys.argv)
-            elevate.elevate()
+            sys.argv.append("--sudoreload")
+            elevate.elevate(graphical=False)
 
     groups: None | list = (
         raw_list[1 : len(raw_list) - 1].replace(" ", "").split(",")

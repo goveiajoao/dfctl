@@ -60,13 +60,17 @@ class Config:
             load_config: dict = json.load(File)
         for k, v in vars(self).items():
             if k not in load_config and k not in self.__exclude:
-                load_config[k] = v()
+                if isinstance(v, Callable):
+                    load_config[k] = v()
 
             if k not in self.__exclude:
                 self[k] = load_config[k]
         with open(self.path, "w") as File:
             json.dump(load_config, File)
 
-        self["dots_path"] = Path(self["dots_path"]).expanduser()
+        if not isinstance(self["dots_path"], Path):
+            self["dots_path"] = Path(self["dots_path"]).expanduser()
+
+    def takegit(self):
         self.repo = take_repo(self["dots_repo"], self["dots_path"])
         self.remote = take_remote(self.repo)
