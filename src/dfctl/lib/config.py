@@ -7,7 +7,7 @@ from git import Remote, Repo
 from rich.prompt import Confirm
 
 from dfctl.lib.git import take_remote, take_repo
-from dfctl.lib.misc import beautypath, take_value
+from dfctl.lib.misc import take_value
 
 
 @dataclass
