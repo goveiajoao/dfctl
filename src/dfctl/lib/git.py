@@ -65,7 +65,6 @@ def gitter_run(cconn, uid: int, gid: int, dots_path):
             except EOFError:
                 break
     finally:
-        print("CLOSSED")
         cconn.close()
 
 
