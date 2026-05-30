@@ -6,8 +6,6 @@ from pathlib import Path
 
 import dfctl.cli.cmd as cmd
 from dfctl.lib.config import Config
-from dfctl.lib.elevate import elevate
-from dfctl.lib.target import sudo_level_in_argv
 
 
 def cli(CONFIG):
@@ -84,7 +82,7 @@ def main():
         else os.getuid()
     )
     gid: int = (
-        int(sys.argv[sys.argv.index("--uid") + 1])
+        int(sys.argv[sys.argv.index("--gid") + 1])
         if "--gid" in "".join(sys.argv)
         else os.getgid()
     )
