@@ -27,3 +27,9 @@ def go_to_user(uid: int, gid: int):
         os.setuid(uid)
     except Exception as e:
         print(e)
+
+
+def isroot():
+    if os.getuid() == 0:
+        return True
+    return False
