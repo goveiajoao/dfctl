@@ -86,7 +86,7 @@ class SubParser(ABC):
             def __deco(*args, **kwargs):
                 self._args = args[0]
 
-                if args[0].autopull and self.setup.autopullsh:
+                if args[0].autopull and self.setup.autopullsh and not isroot():
                     self.config.gitter.pull()
 
                 with self as groups:
