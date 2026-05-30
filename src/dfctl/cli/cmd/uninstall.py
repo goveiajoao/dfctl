@@ -9,7 +9,6 @@ from dfctl.lib.target import TargetExtentions, TargetGroup, get_installed_branch
 
 
 class CMD(SubParser):
-    # @SubParserFS(TargetExtentions.GROUP)
     def func(self, args, config):
         console = Console()
         dots_path: Path = config["dots_path"]

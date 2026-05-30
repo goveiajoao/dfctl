@@ -1,21 +1,22 @@
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
-from git import Remote, Repo
 from rich.prompt import Confirm
 
-from dfctl.lib.git import take_remote, take_repo
+from dfctl.lib.git import Gitter
 from dfctl.lib.misc import take_value
 
 
 @dataclass
 class Config:
-    __exclude = ["__exclude", "path", "repo", "remote"]
+    __exclude = ["__exclude", "path", "uid", "gid", "pcomm", "gitter"]
     path: Path
-    repo: Repo = field(init=False)
-    remote: Remote = field(init=False)
+    uid: int
+    gid: int
+    pcomm: Any
+    gitter: Gitter = field(init=False)
 
     dots_repo: None | str | Callable = field(
         default_factory=lambda: lambda: take_value(
@@ -71,6 +72,5 @@ class Config:
         if not isinstance(self["dots_path"], Path):
             self["dots_path"] = Path(self["dots_path"]).expanduser()
 
-    def takegit(self):
-        self.repo = take_repo(self["dots_repo"], self["dots_path"])
-        self.remote = take_remote(self.repo)
+        self.gitter = Gitter(self.pcomm)
+        # self.gitter.dowait()

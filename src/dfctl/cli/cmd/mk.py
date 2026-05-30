@@ -4,7 +4,6 @@ from shutil import rmtree
 
 from rich.console import Console
 
-from dfctl.lib.git import add_commit
 from dfctl.lib.misc import beautypath
 from dfctl.lib.parser import SubParser, SubParserSetupReturn
 from dfctl.lib.target import TargetExtentions, TargetGroup
@@ -34,6 +33,8 @@ class CMD(SubParser):
         original: Path = Path(group.path).expanduser()
         sym: Path = Path(args.path).expanduser()
 
+        if sym.is_dir():
+            (sym / ".gitkeep").touch()
         sym.copy(original)
         original.unlink() if original.is_file() else rmtree(sym)
         # sym.symlink_to(original, True if original.is_dir else False)
@@ -43,7 +44,7 @@ class CMD(SubParser):
         with open(group.path.parent / "syms.json", "w") as File:
             json.dump({group.instance: str(beautypath(sym))} | syms, File)
 
-        add_commit(config["repo"], f"Created '{str(group)}'")
+        config.gitter.commit(f"Created '{str(group)}'")
         console.log(f"Created '{str(group)}'")
 
     def setup(self, subparser):

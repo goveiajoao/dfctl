@@ -1,12 +1,8 @@
 import json
-import os
-import sys
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
-
-import elevate
 
 
 class WholeNumber(int):
@@ -63,12 +59,18 @@ class TargetGroup:
         self.path = self.path / string
 
 
+def sudo_level_in_argv(argv: list, sudo_levels=["system"]):
+    for level in sudo_levels:
+        if f"{level}{TargetExtentions.LEVEL.value[0]}" in "".join(argv):
+            return True
+    return False
+
+
 def get_target_groups(
     raw: str,
     path: Path,
     range: TargetExtentions,
     invert_notfound: bool = False,
-    elevate_levels: tuple = ("system",),
 ):
 
     raw_list: str = raw[raw.find("[") : raw.rfind("]") + 1]
@@ -119,11 +121,6 @@ def get_target_groups(
         )
     if symbols[0] in raw_list:
         raise ValueError("set the level outside the list")
-
-    if input_level in elevate_levels:
-        if os.getuid() != 0:
-            sys.argv.append("--sudoreload")
-            elevate.elevate(graphical=False)
 
     groups: None | list = (
         raw_list[1 : len(raw_list) - 1].replace(" ", "").split(",")

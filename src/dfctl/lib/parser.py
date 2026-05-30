@@ -79,7 +79,7 @@ class SubParser(ABC):
                 self._args = args[0]
 
                 if args[0].autopull and self.setup.autopullsh:
-                    pull(self.config.remote)
+                    self.config.gitter.pull()
 
                 with self as groups:
                     result: None | Callable = None
@@ -88,7 +88,7 @@ class SubParser(ABC):
                     result = func(*new_args, **kwargs)
 
                 if args[0].autopush and self.setup.autopullsh:
-                    push(self.config.remote)
+                    self.config.gitter.push()
 
                 return result
 

@@ -4,7 +4,6 @@ from shutil import rmtree
 
 from rich.console import Console
 
-from dfctl.lib.git import add_commit
 from dfctl.lib.parser import SubParser, SubParserSetupReturn
 from dfctl.lib.target import TargetExtentions, TargetGroup
 
@@ -26,7 +25,7 @@ class CMD(SubParser):
             def __deco(*args, **kwargs):
                 func(*args, **kwargs)
                 msg = str(args[0])
-                add_commit(config["repo"], f"Removed '{msg}'")
+                config.gitter.commit(f"Removed '{msg}'")
                 console.log(f"[bold red]Removed[/] [bold blue]'{msg}'")
 
             return __deco

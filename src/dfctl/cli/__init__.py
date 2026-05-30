@@ -1,35 +1,16 @@
 import argparse
+import multiprocessing as mp
 import os
 import sys
 from pathlib import Path
 
 import dfctl.cli.cmd as cmd
 from dfctl.lib.config import Config
+from dfctl.lib.elevate import elevate
+from dfctl.lib.target import sudo_level_in_argv
 
 
-def main():
-
-    # Sudo Error
-    if os.getuid() == 0 and "--sudoreload" not in sys.argv:
-        raise Exception("please do not run as root")
-
-    # Config
-    #   NOTE: adapted for sudo loop, thats why its ugly af
-    config_path: Path
-    if "-c" in sys.argv:
-        config_path = Path(sys.argv[sys.argv.index("-c") + 1])
-    else:
-        config_path = Path("~/.config/dfctl/config.json").expanduser()
-        sys.argv.append("-c")
-        sys.argv.append(str(config_path))
-
-    CONFIG: Config = Config(config_path)
-    if "-d" in sys.argv:
-        CONFIG.dots_path = Path(sys.argv[sys.argv.index("-d") + 1])
-    else:
-        sys.argv.append("-d")
-        sys.argv.append(str(CONFIG["dots_path"]))
-    CONFIG.takegit()
+def cli(CONFIG):
 
     # Parser Section
     arguments_parser = argparse.ArgumentParser(add_help=False)
@@ -57,11 +38,20 @@ def main():
         help="auto push after any local-repo action",
     )
     arguments_parser.add_argument(
-        "--sudoreload",
-        action="store_false",
+        "--uid",
         help=argparse.SUPPRESS,
     )
-    parser: argparse.ArgumentParser = argparse.ArgumentParser(
+    arguments_parser.add_argument(
+        "--gid",
+        help=argparse.SUPPRESS,
+    )
+
+    class CustomArgumentParser(argparse.ArgumentParser):
+        def error(self, message):
+            CONFIG.gitter.exit()
+            super().error(message)
+
+    parser: argparse.ArgumentParser = CustomArgumentParser(
         prog="dfctl",
         description="Dotfiles CLI",
         color=False,
@@ -80,10 +70,48 @@ def main():
         "    '-' Means Exclude/Negate\n"
         "    '<x> target' Means that it is a target that accept info until x, if passed info after x, it will error\n",
     )
+
     subparsers: argparse._SubParsersAction = parser.add_subparsers(required=True)
     cmd.init(subparsers, CONFIG, arguments_parser)
+
     args = parser.parse_args()
-    args.func(args)
+
+    try:
+        args.func(args)
+    finally:
+        CONFIG.gitter.exit()
+
+
+def main():
+    if os.getuid() == 0:
+        if "--uid" not in "".join(sys.argv):
+            raise Exception("please do not run as root")
+    elif sudo_level_in_argv(sys.argv):
+        elevate()
+    uid: int = (
+        int(sys.argv[sys.argv.index("--uid") + 1])
+        if "--uid" in "".join(sys.argv)
+        else os.getuid()
+    )
+    gid: int = (
+        int(sys.argv[sys.argv.index("--uid") + 1])
+        if "--gid" in "".join(sys.argv)
+        else os.getgid()
+    )
+
+    pconn, cconn = mp.Pipe()
+    config_path = Path("~/.config/dfctl/config.json").expanduser()
+    CONFIG = Config(config_path, uid, gid, pconn)
+    mp.Process(
+        target=CONFIG.gitter.return_run(),
+        args=(cconn, uid, gid, CONFIG["dots_path"]),
+    ).start()
+
+    pconn.recv()
+    try:
+        cli(CONFIG)
+    finally:
+        CONFIG.gitter.exit()
 
 
 if __name__ == "__main__":
