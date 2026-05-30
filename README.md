@@ -11,7 +11,7 @@ A simple and easy dotfiles control tool
         - [x] ls
         - [x] pull/push
     - [ ] man/help
-    - [ ] elevate for system dots
+    - [x] elevate for system dots
     - [x] pyproject.toml
 - Future Ideas:
     - [ ] Group/Branch Dependencie System
