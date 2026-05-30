@@ -30,6 +30,8 @@ class CMD(SubParser):
             with open(group.path.parent / "syms.json", "w") as File:
                 json.dump({}, File)
 
+        with open(group.path.parent.parent / "dependencies.json", "w") as File:
+            json.dump({}, File)
         with open(group.path.parent / "dependencies.json", "w") as File:
             json.dump({}, File)
 
