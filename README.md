@@ -13,8 +13,11 @@ A simple and easy dotfiles control tool
     - [ ] man/help
     - [x] elevate for system dots
     - [x] pyproject.toml
+    - [ ] setup git version
+    - [ ] add pyproject version integration with git version
 - Future Ideas:
     - [ ] Group/Branch Dependencie System
+    - [ ] Makefile in dots repo to quickly install and setup config for dfctl (so i just need to clone the dots repo and do make inside it)
     - [ ] checkhealth
 - After:
     - Just review the code and add needed features
