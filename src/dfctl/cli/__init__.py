@@ -78,8 +78,6 @@ def main():
     if os.getuid() == 0:
         if "--uid" not in "".join(sys.argv):
             raise Exception("please do not run as root")
-    elif sudo_level_in_argv(sys.argv):
-        elevate()
     uid: int = (
         int(sys.argv[sys.argv.index("--uid") + 1])
         if "--uid" in "".join(sys.argv)

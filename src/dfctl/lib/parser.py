@@ -8,7 +8,8 @@ from rich.console import Console
 from rich.prompt import Confirm
 
 from dfctl.lib.config import Config
-from dfctl.lib.target import TargetExtentions, get_target_groups
+from dfctl.lib.elevate import elevate, isroot
+from dfctl.lib.target import TargetExtentions, get_target_groups, sudo_level_in_argv
 
 
 @dataclass()
@@ -49,7 +50,7 @@ class SubParser(ABC):
                 if self._args.target:
                     pass
             except Exception:
-                return None
+                return []
 
             if self._args.target and self.setup.mode:
                 groups = get_target_groups(
@@ -59,9 +60,16 @@ class SubParser(ABC):
                     self.setup.invert_notfind,
                 )
 
-                self.console.log(
-                    f"[bold blue]Selected[/] {[f"{str(x)}" for x in groups]}"
-                )
+                if not isroot():
+                    self.console.log(
+                        f"[bold blue]Selected[/] {[f"{str(x)}" for x in groups]}"
+                    )
+
+                try:
+                    if sudo_level_in_argv([str(x) for x in groups]) and not isroot():
+                        elevate()
+                except Exception:
+                    pass
 
                 if (
                     Confirm.ask(f"{self.setup.ask}{self.setup.ask_end}")
@@ -69,6 +77,7 @@ class SubParser(ABC):
                     else True
                 ):
                     return groups
+            return []
 
         def __exit__(self, exc_type, exc_val, exc_tb):
             pass
@@ -81,8 +90,6 @@ class SubParser(ABC):
                     self.config.gitter.pull()
 
                 with self as groups:
-                    if not groups:
-                        groups = []
                     result: None | Callable = None
                     self._args.groups = groups
                     new_args = (self._args, self.config)
