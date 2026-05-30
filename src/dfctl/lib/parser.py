@@ -8,7 +8,6 @@ from rich.console import Console
 from rich.prompt import Confirm
 
 from dfctl.lib.config import Config
-from dfctl.lib.git import pull, push
 from dfctl.lib.target import TargetExtentions, get_target_groups
 
 
@@ -82,6 +81,8 @@ class SubParser(ABC):
                     self.config.gitter.pull()
 
                 with self as groups:
+                    if not groups:
+                        groups = []
                     result: None | Callable = None
                     self._args.groups = groups
                     new_args = (self._args, self.config)

@@ -15,14 +15,6 @@ def cli(CONFIG):
     # Parser Section
     arguments_parser = argparse.ArgumentParser(add_help=False)
     arguments_parser.add_argument(
-        "-c",
-        help="config file (~/.config/dfctl/config.json)",
-    )
-    arguments_parser.add_argument(
-        "-d",
-        help="dots path (~/.dotfiles/)",
-    )
-    arguments_parser.add_argument(
         "--noconfirm",
         action="store_true",
         help="skip confirmation prompts",
