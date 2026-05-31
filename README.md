@@ -20,7 +20,7 @@ A simple and easy dotfiles control tool
           only create depencencies.json when needed (auto deleted if empty), and dep will have its edit option, not just create the dependencie file
     - [ ] "edit" Command so u can edit a config file from enywhere with your $EDITOR and it auto pushes it after you exit the program (MAYBE a watchdog, but may be overkill, like this program... lol)
     - [ ] Makefile in dots repo to quickly install and setup config for dfctl (so i just need to clone the dots repo and do make inside it)
-    - [ ] Ignore items in folder instance option (.gitignore inside folder instances)
+    - [ ] "ignore" Command to ignore items in folder instance (.gitignore inside folder instances), same vibe as dep but for ignoring things in INSTANCES
     - [ ] checkhealth
 - After:
     - Just review the code and add needed features
