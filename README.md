@@ -17,6 +17,8 @@ A simple and easy dotfiles control tool
     - [ ] add pyproject version integration with git version
 - Future Ideas:
     - [ ] Group/Branch Dependencie System (command "dep", that u can set the dependencies of an group OR branch (dependencies: file_exists, program_installed, ...)
+          only create depencencies.json when needed (auto deleted if empty), and dep will have its edit option, not just create the dependencie file
+    - [ ] "edit" Command so u can edit a config file from enywhere with your $EDITOR and it auto pushes it after you exit the program (MAYBE a watchdog, but may be overkill, like this program... lol)
     - [ ] Makefile in dots repo to quickly install and setup config for dfctl (so i just need to clone the dots repo and do make inside it)
     - [ ] Ignore items in folder instance option (.gitignore inside folder instances)
     - [ ] checkhealth
