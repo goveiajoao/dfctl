@@ -1,4 +1,5 @@
 import json
+import shutil
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -209,6 +210,63 @@ def get_available_branchs(path: Path) -> list[TargetGroup]:
         for x in available_groups
         for y in next(x.path.walk())[1]
     ]
+
+
+def get_deps(
+    target: TargetGroup,
+) -> dict:
+    if target.range.name in [TargetExtentions.GROUP.name, TargetExtentions.BRANCH.name]:
+        with open(target.path / ".deps.json", "r") as File:
+            return json.load(File)
+    else:
+        raise Exception("invalid target range")
+
+
+def check_deps(
+    target: TargetGroup,
+) -> bool:
+    deps = get_deps(target)
+
+    for k, v in deps.items():
+        if not isinstance(v, list):
+            raise Exception(f"deps not right in {str(target)}")
+        match k:
+            case "which":
+                for x in v:
+                    if shutil.which(x) is None:
+                        return False
+            case "exists":
+                for x in v:
+                    if not Path(x).expanduser().exists():
+                        return False
+
+    return True
+
+
+def get_syms(
+    target: TargetGroup,
+) -> dict:
+    if target.range.name == TargetExtentions.GROUP.name:
+        with open(target.path / ".syms.json", "r") as File:
+            return json.load(File)
+    else:
+        raise Exception("invalid target range")
+
+
+def add_syms(target: TargetGroup, sym: Path) -> int:
+    if target.range.name == TargetExtentions.BRANCH.name:
+
+        syms = get_syms(target)
+        new_index = syms[::-1][0]
+        syms[new_index] = sym
+
+        with open(target.path / ".syms.json", "w") as File:
+            json.dump(syms, File)
+
+        return new_index
+
+    else:
+        raise Exception("invalid target range")
 
 
 def get_installed_branchs(path: Path) -> list[TargetGroup]:
