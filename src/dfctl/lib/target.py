@@ -269,6 +269,14 @@ def add_syms(target: TargetGroup, sym: Path) -> int:
         raise Exception("invalid target range")
 
 
+def rm_syms(target: TargetGroup, index: int) -> None:
+    syms = get_syms(target)
+    syms.pop(index)
+
+    with open(target.path / ".syms.json", "w") as File:
+        json.dump(syms, File)
+
+
 def get_installed_branchs(path: Path) -> list[TargetGroup]:
     available_branchs = get_available_branchs(path)
     installed_branchs: list = []
