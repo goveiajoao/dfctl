@@ -44,7 +44,6 @@ def cli(CONFIG):
     parser: argparse.ArgumentParser = CustomArgumentParser(
         prog="dfctl",
         description="Dotfiles CLI",
-        color=False,
         formatter_class=argparse.RawDescriptionHelpFormatter,
         parents=[arguments_parser],
         epilog="target:\n"
