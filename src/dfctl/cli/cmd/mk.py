@@ -42,7 +42,6 @@ class CMD(SubParser):
             (sym / ".gitkeep").touch()
         sym.copy(original)
         original.unlink() if original.is_file() else rmtree(sym)
-        # sym.symlink_to(original, True if original.is_dir else False)
 
         with open(group.path.parent / "syms.json", "r") as File:
             syms: dict = json.load(File)
