@@ -99,6 +99,7 @@ def main():
         cli(CONFIG)
     finally:
         CONFIG.gitter.exit()
+    # remember rework cmds
 
 
 if __name__ == "__main__":
