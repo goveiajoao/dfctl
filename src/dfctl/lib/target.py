@@ -291,9 +291,12 @@ def mk_target(target: TargetGroup, path: Path) -> int:
         sym: Path = target.path
         sym_instance: int = target.instance
         original = path
-        if target.instance in syms.keys() and sym_instance == 0:
-            sym_instance = len(syms.keys())
-            sym = target.path.parent / str(sym_instance)
+        if target.instance in syms.keys():
+            if sym_instance == 0:
+                sym_instance = len(syms.keys())
+                sym = target.path.parent / str(sym_instance)
+            else:
+                ValueError(f"instance {str(target)} already exists")
 
         if original.is_file():
             copy(original, sym)
