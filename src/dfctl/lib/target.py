@@ -2,6 +2,7 @@ import json
 import shutil
 from dataclasses import dataclass
 from enum import Enum
+from json.encoder import ESCAPE
 from pathlib import Path
 from typing import Any, Literal
 
@@ -215,9 +216,12 @@ def get_available_branchs(path: Path) -> list[TargetGroup]:
 def get_deps(
     target: TargetGroup,
 ) -> dict:
-    if target.range.name in [TargetExtentions.GROUP.name, TargetExtentions.BRANCH.name]:
-        with open(target.path / ".deps.json", "r") as File:
-            return json.load(File)
+    if target.range in [TargetExtentions.GROUP, TargetExtentions.BRANCH]:
+        try:
+            with open(target.path / ".deps.json", "r") as File:
+                return json.load(File)
+        except Exception:
+            return {}
     else:
         raise Exception("invalid target range")
 
@@ -246,7 +250,7 @@ def check_deps(
 def get_syms(
     target: TargetGroup,
 ) -> dict:
-    if target.range.name == TargetExtentions.GROUP.name:
+    if target.range == TargetExtentions.GROUP:
         with open(target.path / ".syms.json", "r") as File:
             return json.load(File)
     else:
@@ -254,7 +258,7 @@ def get_syms(
 
 
 def add_syms(target: TargetGroup, sym: Path) -> int:
-    if target.range.name == TargetExtentions.BRANCH.name:
+    if target.range == TargetExtentions.BRANCH:
 
         syms = get_syms(target)
         new_index = syms[::-1][0]
@@ -267,6 +271,23 @@ def add_syms(target: TargetGroup, sym: Path) -> int:
 
     else:
         raise Exception("invalid target range")
+
+
+def mk_target(target: TargetGroup) -> None:
+    target.path.mkdir(parents=True, exist_ok=True)
+
+    match target.range:
+        case TargetExtentions.GROUP:
+            if not (syms_path := target.path / ".syms.json").exists():
+                with open(syms_path, "w") as File:
+                    json.dump({}, File)
+        case TargetExtentions.INSTANCE:
+            for right_path in [target.path, target.path.parent]:
+                if not (syms_path := right_path / ".syms.json").exists():
+                    with open(syms_path, "w") as File:
+                        json.dump({}, File)
+        case _:
+            raise ValueError("invalid group range")
 
 
 def rm_syms(target: TargetGroup, index: int) -> None:
