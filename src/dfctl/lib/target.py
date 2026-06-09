@@ -4,7 +4,10 @@ from dataclasses import dataclass
 from enum import Enum
 from json.encoder import ESCAPE
 from pathlib import Path
+from shutil import copy, copytree, rmtree
 from typing import Any, Literal
+
+from dfctl.lib.misc import beautypath
 
 
 class WholeNumber(int):
@@ -273,21 +276,39 @@ def add_syms(target: TargetGroup, sym: Path) -> int:
         raise Exception("invalid target range")
 
 
-def mk_target(target: TargetGroup) -> None:
-    target.path.mkdir(parents=True, exist_ok=True)
+def mk_target(target: TargetGroup, path: Path) -> int:
+    if target.range == TargetExtentions.INSTANCE:
 
-    match target.range:
-        case TargetExtentions.GROUP:
-            if not (syms_path := target.path / ".syms.json").exists():
-                with open(syms_path, "w") as File:
-                    json.dump({}, File)
-        case TargetExtentions.INSTANCE:
-            for right_path in [target.path, target.path.parent]:
-                if not (syms_path := right_path / ".syms.json").exists():
-                    with open(syms_path, "w") as File:
-                        json.dump({}, File)
-        case _:
-            raise ValueError("invalid group range")
+        target.path.mkdir(parents=True, exist_ok=True)
+        syms_path = target.path.parent.parent / ".syms.json"
+
+        if not (syms_path := syms_path).exists():
+            with open(syms_path, "w") as File:
+                json.dump({}, File)
+        with open(syms_path, "r") as File:
+            syms = json.load(File)
+
+        sym: Path = target.path
+        sym_instance: int = target.instance
+        original = path
+        if target.instance in syms.keys() and sym_instance == 0:
+            sym_instance = len(syms.keys())
+            sym = target.path.parent / str(sym_instance)
+
+        if original.is_file():
+            copy(original, sym)
+            original.unlink()
+        else:
+            (original / ".gitkeep").touch()
+            rmtree(original)
+
+        with open(syms_path, "w") as File:
+            json.dump({sym_instance: str(beautypath(sym))} | syms, File)
+
+        return sym_instance
+
+    else:
+        raise ValueError("invalid target range")
 
 
 def rm_syms(target: TargetGroup, index: int) -> None:

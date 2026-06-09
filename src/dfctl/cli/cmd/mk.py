@@ -6,7 +6,7 @@ from rich.console import Console
 
 from dfctl.lib.misc import beautypath
 from dfctl.lib.parser import SubParser, SubParserSetupReturn
-from dfctl.lib.target import TargetExtentions, TargetGroup
+from dfctl.lib.target import TargetExtentions, TargetGroup, WholeNumber, mk_target
 
 
 class CMD(SubParser):
@@ -15,38 +15,9 @@ class CMD(SubParser):
         groups: list[TargetGroup] = args.groups
         if len(groups) > 1:
             raise ValueError("just one group in target for mk")
+
         group = groups[0]
-        group.path.parent.mkdir(parents=True, exist_ok=True)
-
-        try:
-            with open(group.path.parent / "syms.json", "r") as File:
-                syms: dict = json.load(File)
-            for original, sym in syms.items():
-                original = group.path.parent / original
-                sym = Path(sym).expanduser()
-                if original == group.instance:
-                    raise ValueError(f"instance in '{str(group)}' already exists")
-        except Exception:
-            with open(group.path.parent / "syms.json", "w") as File:
-                json.dump({}, File)
-
-        with open(group.path.parent.parent / "dependencies.json", "w") as File:
-            json.dump({}, File)
-        with open(group.path.parent / "dependencies.json", "w") as File:
-            json.dump({}, File)
-
-        original: Path = Path(group.path).expanduser()
-        sym: Path = Path(args.path).expanduser()
-
-        if sym.is_dir():
-            (sym / ".gitkeep").touch()
-        sym.copy(original)
-        original.unlink() if original.is_file() else rmtree(sym)
-
-        with open(group.path.parent / "syms.json", "r") as File:
-            syms: dict = json.load(File)
-        with open(group.path.parent / "syms.json", "w") as File:
-            json.dump({group.instance: str(beautypath(sym))} | syms, File)
+        group.instance = WholeNumber(mk_target(group, Path(args.path).expanduser()))
 
         config.gitter.commit(f"Created '{str(group)}'")
         console.log(f"Created '{str(group)}'")
