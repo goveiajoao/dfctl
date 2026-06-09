@@ -50,7 +50,7 @@ class TargetGroup:
             case TargetExtentions.BRANCH:
                 return f"{self.level}{symbols[0]}{self.name}{symbols[1]}{self.branch}"
             case TargetExtentions.INSTANCE:
-                return f"{self.level}{symbols[0]}{self.name}{symbols[1]}{self.branch}{symbols[2]}{self.instance}"
+                return f"{self.level}{symbols[0]}{self.name}{symbols[2]}{self.instance}"
 
     def __post_init__(self):
         extentions: dict[str, tuple] = {
@@ -58,7 +58,7 @@ class TargetGroup:
         }
         symbols: list[str] = [v[0] for v in extentions.values()]
 
-        string = str(self)
+        string = f"{self.level}{symbols[0]}{self.name}{symbols[1]}{self.branch}{symbols[2]}{self.instance}"
         for x in symbols:
             string = string.replace(x, "/")
         self.path = self.path / string
@@ -75,7 +75,7 @@ def get_target_groups(
     raw: str,
     path: Path,
     range: TargetExtentions,
-    invert_notfound: bool = False,
+    notfound: bool = True,
 ):
 
     raw_list: str = raw[raw.find("[") : raw.rfind("]") + 1]
@@ -97,6 +97,7 @@ def get_target_groups(
     excludes_names: list[str] = [k for k in names[range_ind + 1 :]]
     symbols: list[str] = [v[0] for v in extentions.values()]
     defaults: list[Any] = [v[1] for v in extentions.values()]
+    no_instance_passed = False
 
     for _, name in enumerate(names):
         symbol = symbols[_]
@@ -112,6 +113,7 @@ def get_target_groups(
                             raw = f"{raw[:raw.find(symbols[_+1])]}{symbol}{default}{raw[raw.find(symbols[_+1]):]}"
                     case TargetExtentions.INSTANCE.name:
                         raw = f"{raw}{symbol}{default}"
+                        no_instance_passed = True
             case 1:
                 if name in excludes_names:
                     raise ValueError(f"{name} cannot be passed in range {range.name}")
@@ -142,7 +144,7 @@ def get_target_groups(
     general_branch: str = raw[raw.rfind(symbols[1]) + 1 : raw.rfind(symbols[2])]
     general_instance: str = raw[raw.rfind(symbols[2]) + 1 :]
 
-    result: list[TargetGroup] = []
+    results: list[TargetGroup] = []
     result_remove_list: list[str] = []
     for group in groups:
         level: str = input_level
@@ -164,7 +166,7 @@ def get_target_groups(
                 if name in v
             )
         except Exception:
-            if not invert_notfound:
+            if notfound:
                 raise ValueError(f"group '{name}' does not exist in levels {levels}")
 
         branch: str = (
@@ -176,7 +178,7 @@ def get_target_groups(
             if group.count(symbols[1])
             else general_branch
         )
-        if not invert_notfound and branch not in next((path / level / name).walk())[1]:
+        if notfound and branch not in next((path / level / name).walk())[1]:
             raise ValueError(
                 f"branch '{branch}' does not exist in group '{level}{symbols[0]}{name}'"
             )
@@ -186,7 +188,7 @@ def get_target_groups(
             if group.count(symbols[2])
             else WholeNumber(general_instance)
         )
-        if not invert_notfound and str(instance) not in [
+        if notfound and str(instance) not in [
             y for x in next((path / level / name / branch).walk())[1:] for y in x
         ]:
             raise ValueError(
@@ -195,12 +197,31 @@ def get_target_groups(
 
         match mode:
             case "add":
-                result.append(TargetGroup(name, level, branch, instance, range, path))
+                do_result = lambda: TargetGroup(
+                    name, level, branch, instance, range, path
+                )
+                prov_result = do_result()
+                match prov_result.range:
+                    case TargetExtentions.INSTANCE:
+                        if not notfound:
+                            prov_result.path.mkdir(parents=True, exist_ok=True)
+
+                            syms = get_syms(prov_result)
+
+                            if str(prov_result.instance) in list(syms.keys()):
+                                if no_instance_passed:
+                                    instance = WholeNumber(len(syms.keys()))
+                                else:
+                                    raise ValueError(
+                                        f"instance {str(prov_result)} already exists"
+                                    )
+
+                results.append(do_result())
             case "remove":
                 result_remove_list.append(name)
 
-    result = [x for x in result if x.name not in result_remove_list]
-    return result
+    results = [x for x in results if x.name not in result_remove_list]
+    return results
 
 
 def get_available_groups(path: Path) -> list[TargetGroup]:
@@ -250,53 +271,60 @@ def check_deps(
     return True
 
 
-def get_syms(
+def get_syms_path(
     target: TargetGroup,
-) -> dict:
-    if target.range == TargetExtentions.GROUP:
-        with open(target.path / ".syms.json", "r") as File:
+) -> Path:
+    match target.range:
+        case TargetExtentions.GROUP:
+            syms_path = target.path / ".syms.json"
+            return syms_path
+        case TargetExtentions.BRANCH:
+            syms_path = target.path.parent / ".syms.json"
+            return syms_path
+        case TargetExtentions.INSTANCE:
+            syms_path = target.path.parent.parent / ".syms.json"
+            return syms_path
+        case _:
+            raise Exception("invalid target range")
+
+
+def get_syms(target: TargetGroup) -> dict:
+    if target.range in (
+        TargetExtentions.GROUP,
+        TargetExtentions.BRANCH,
+        TargetExtentions.INSTANCE,
+    ):
+        syms_path = get_syms_path(target)
+        if not syms_path.exists():
+            with open(syms_path, "w") as File:
+                json.dump({}, File)
+        with open(syms_path, "r") as File:
             return json.load(File)
     else:
         raise Exception("invalid target range")
 
 
-def add_syms(target: TargetGroup, sym: Path) -> int:
-    if target.range == TargetExtentions.BRANCH:
+def add_syms(target: TargetGroup, original: Path) -> None:
+    if target.range in (
+        TargetExtentions.GROUP,
+        TargetExtentions.BRANCH,
+        TargetExtentions.INSTANCE,
+    ):
 
         syms = get_syms(target)
-        new_index = syms[::-1][0]
-        syms[new_index] = sym
+        syms_path = get_syms_path(target)
 
-        with open(target.path / ".syms.json", "w") as File:
-            json.dump(syms, File)
-
-        return new_index
-
+        with open(syms_path, "w") as File:
+            json.dump({target.instance: str(beautypath(original))} | syms, File)
     else:
         raise Exception("invalid target range")
 
 
-def mk_target(target: TargetGroup, path: Path) -> int:
+def mk_instance_target(target: TargetGroup, path: Path) -> None:
     if target.range == TargetExtentions.INSTANCE:
 
-        target.path.mkdir(parents=True, exist_ok=True)
-        syms_path = target.path.parent.parent / ".syms.json"
-
-        if not (syms_path := syms_path).exists():
-            with open(syms_path, "w") as File:
-                json.dump({}, File)
-        with open(syms_path, "r") as File:
-            syms = json.load(File)
-
         sym: Path = target.path
-        sym_instance: int = target.instance
         original = path
-        if target.instance in syms.keys():
-            if sym_instance == 0:
-                sym_instance = len(syms.keys())
-                sym = target.path.parent / str(sym_instance)
-            else:
-                ValueError(f"instance {str(target)} already exists")
 
         if original.is_file():
             copy(original, sym)
@@ -305,10 +333,7 @@ def mk_target(target: TargetGroup, path: Path) -> int:
             (original / ".gitkeep").touch()
             rmtree(original)
 
-        with open(syms_path, "w") as File:
-            json.dump({sym_instance: str(beautypath(sym))} | syms, File)
-
-        return sym_instance
+        add_syms(target, original)
 
     else:
         raise ValueError("invalid target range")

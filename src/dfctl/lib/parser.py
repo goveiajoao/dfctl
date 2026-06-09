@@ -16,7 +16,7 @@ from dfctl.lib.target import TargetExtentions, get_target_groups, sudo_level_in_
 class SubParserSetupReturn:
     mode: None | TargetExtentions = None
     autopullsh: bool = False
-    invert_notfind: bool = False
+    notfind: bool = True
     ask: str = "Are you sure you want to proceed"
     ask_end: str = "?"
 
@@ -57,7 +57,7 @@ class SubParser(ABC):
                     self._args.target,
                     Path(self.config["dots_path"]).expanduser(),
                     self.setup.mode,
-                    self.setup.invert_notfind,
+                    self.setup.notfind,
                 )
 
                 if not isroot():

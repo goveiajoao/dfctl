@@ -1,12 +1,9 @@
-import json
 from pathlib import Path
-from shutil import rmtree
 
 from rich.console import Console
 
-from dfctl.lib.misc import beautypath
 from dfctl.lib.parser import SubParser, SubParserSetupReturn
-from dfctl.lib.target import TargetExtentions, TargetGroup, WholeNumber, mk_target
+from dfctl.lib.target import TargetExtentions, TargetGroup, mk_instance_target
 
 
 class CMD(SubParser):
@@ -14,10 +11,10 @@ class CMD(SubParser):
         console = Console()
         groups: list[TargetGroup] = args.groups
         if len(groups) > 1:
-            raise ValueError("just one group in target for mk")
+            raise ValueError("just one intarget for mk")
 
         group = groups[0]
-        group.instance = WholeNumber(mk_target(group, Path(args.path).expanduser()))
+        mk_instance_target(group, Path(args.path).expanduser())
 
         config.gitter.commit(f"Created '{str(group)}'")
         console.log(f"Created '{str(group)}'")
@@ -37,4 +34,4 @@ class CMD(SubParser):
             E.G: "~/.config/tmux" """,
         )
 
-        return SubParserSetupReturn(TargetExtentions.INSTANCE, True, True)
+        return SubParserSetupReturn(TargetExtentions.INSTANCE, True, False)
