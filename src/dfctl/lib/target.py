@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from enum import Enum
 from json.encoder import ESCAPE
 from pathlib import Path
-from shutil import copy, copytree, rmtree
 from typing import Any, Literal
 
 from dfctl.lib.misc import beautypath
@@ -318,25 +317,6 @@ def add_syms(target: TargetGroup, original: Path) -> None:
             json.dump({target.instance: str(beautypath(original))} | syms, File)
     else:
         raise Exception("invalid target range")
-
-
-def mk_instance_target(target: TargetGroup, path: Path) -> None:
-    if target.range == TargetExtentions.INSTANCE:
-
-        sym: Path = target.path
-        original = path
-
-        if original.is_file():
-            copy(original, sym)
-            original.unlink()
-        else:
-            (original / ".gitkeep").touch()
-            rmtree(original)
-
-        add_syms(target, original)
-
-    else:
-        raise ValueError("invalid target range")
 
 
 def rm_syms(target: TargetGroup, index: int) -> None:

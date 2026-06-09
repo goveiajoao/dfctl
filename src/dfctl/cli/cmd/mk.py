@@ -1,9 +1,10 @@
 from pathlib import Path
+from shutil import copy, copytree, rmtree
 
 from rich.console import Console
 
 from dfctl.lib.parser import SubParser, SubParserSetupReturn
-from dfctl.lib.target import TargetExtentions, TargetGroup, mk_instance_target
+from dfctl.lib.target import TargetExtentions, TargetGroup, add_syms
 
 
 class CMD(SubParser):
@@ -14,7 +15,17 @@ class CMD(SubParser):
             raise ValueError("just one intarget for mk")
 
         group = groups[0]
-        mk_instance_target(group, Path(args.path).expanduser())
+        sym: Path = group.path
+        original = Path(args.path).expanduser()
+        if original.is_file():
+            copy(original, sym)
+            original.unlink()
+        else:
+            (original / ".gitkeep").touch()
+            copytree(original, sym, dirs_exist_ok=True)
+            rmtree(original)
+
+        add_syms(group, original)
 
         config.gitter.commit(f"Created '{str(group)}'")
         console.log(f"Created '{str(group)}'")
