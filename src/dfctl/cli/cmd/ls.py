@@ -16,6 +16,7 @@ class CMD(SubParser):
         dots_path: Path = config["dots_path"]
         groups: list[TargetGroup] = get_available_groups(dots_path)
         installed_branchs: list[TargetGroup] = get_installed_branchs(dots_path)
+
         installed_groups: dict[str, TargetGroup] = {}
         for branch in installed_branchs:
             installed_groups[branch.name] = branch

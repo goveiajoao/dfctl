@@ -16,8 +16,8 @@ class CMD(SubParser):
         if len(groups) > 1:
             raise ValueError("just one group in target for mk")
         group = groups[0]
-
         group.path.parent.mkdir(parents=True, exist_ok=True)
+
         try:
             with open(group.path.parent / "syms.json", "r") as File:
                 syms: dict = json.load(File)
