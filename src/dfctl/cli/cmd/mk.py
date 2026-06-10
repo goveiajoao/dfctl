@@ -28,7 +28,7 @@ class CMD(SubParser):
         add_syms(group, original)
 
         config.gitter.commit(f"Created '{str(group)}'")
-        console.log(f"Created '{str(group)}'")
+        console.log(f"[bold green]Created[/] [bold blue]'{str(group)}'[/]")
 
     def setup(self, subparser):
         subparser.add_argument(

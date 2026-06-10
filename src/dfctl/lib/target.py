@@ -49,7 +49,7 @@ class TargetGroup:
             case TargetExtentions.BRANCH:
                 return f"{self.level}{symbols[0]}{self.name}{symbols[1]}{self.branch}"
             case TargetExtentions.INSTANCE:
-                return f"{self.level}{symbols[0]}{self.name}{symbols[2]}{self.instance}"
+                return f"{self.level}{symbols[0]}{self.name}{symbols[1]}{self.branch}{symbols[2]}{self.instance}"
 
     def __post_init__(self):
         extentions: dict[str, tuple] = {
@@ -203,7 +203,7 @@ def get_target_groups(
                 match prov_result.range:
                     case TargetExtentions.INSTANCE:
                         if not notfound:
-                            prov_result.path.mkdir(parents=True, exist_ok=True)
+                            prov_result.path.parent.mkdir(parents=True, exist_ok=True)
 
                             syms = get_syms(prov_result)
 

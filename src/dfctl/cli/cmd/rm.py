@@ -5,7 +5,7 @@ from shutil import rmtree
 from rich.console import Console
 
 from dfctl.lib.parser import SubParser, SubParserSetupReturn
-from dfctl.lib.target import TargetExtentions, TargetGroup
+from dfctl.lib.target import TargetExtentions, TargetGroup, get_syms, rm_syms
 
 
 class CMD(SubParser):
@@ -36,17 +36,7 @@ class CMD(SubParser):
 
         @final
         def instance(group: TargetGroup):
-            syms = group.path.parent / "syms.json"
-            instance = group.path
-
-            with open(syms, "r") as File:
-                jsonfile = json.load(File)
-            with open(syms, "w") as File:
-                json.dump(
-                    {k: v for k, v in jsonfile.items() if k != str(group.instance)},
-                    File,
-                )
-            instance.unlink() if instance.is_file() else rmtree(instance)
+            rm_syms(group, group.instance)
 
         match mode:
             case TargetExtentions.INSTANCE:
