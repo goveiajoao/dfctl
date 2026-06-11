@@ -49,7 +49,7 @@ class TargetGroup:
             case TargetExtentions.BRANCH:
                 return f"{self.level}{symbols[0]}{self.name}{symbols[1]}{self.branch}"
             case TargetExtentions.INSTANCE:
-                return f"{self.level}{symbols[0]}{self.name}{symbols[2]}{self.instance}"
+                return f"{self.level}{symbols[0]}{self.name}{symbols[1]}{self.branch}{symbols[2]}{self.instance}"
 
     def __post_init__(self):
         extentions: dict[str, tuple] = {
@@ -187,12 +187,12 @@ def get_target_groups(
             if group.count(symbols[2])
             else WholeNumber(general_instance)
         )
-        # if notfound and str(instance) not in [
-        #     y for x in next((path / level / name / branch).walk())[1:] for y in x
-        # ]:
-        #     raise ValueError(
-        #         f"instance '{instance}' does not exist in branch '{level}{symbols[0]}{name}{symbols[1]}{branch}'"
-        #     )
+        if notfound and str(instance) not in [
+            y for x in next((path / level / name / branch).walk())[1:] for y in x
+        ]:
+            raise ValueError(
+                f"instance '{instance}' does not exist in branch '{level}{symbols[0]}{name}{symbols[1]}{branch}'"
+            )
 
         match mode:
             case "add":
