@@ -62,6 +62,60 @@ class TargetGroup:
             string = string.replace(x, "/")
         self.path = self.path / string
 
+    def get_info_path(self) -> Path:
+        match self.range:
+            case TargetExtentions.GROUP:
+                path = self.path / "info.json"
+                return path
+            case TargetExtentions.BRANCH:
+                path = self.path.parent / "info.json"
+                return path
+            case TargetExtentions.INSTANCE:
+                path = self.path.parent.parent / "info.json"
+                return path
+            case _:
+                raise Exception("invalid target range")
+
+    def get_info(self) -> dict:
+        path = self.get_info_path()
+        if not path.exists():
+            with open(path, "w") as File:
+                json.dump({"syms": {}, "deps": {}}, File, indent=4)
+        with open(path, "r") as File:
+            return json.load(File)
+
+    def get_syms(self) -> dict:
+        info_path = self.get_info_path()
+        info = self.get_info()
+        return info["syms"]
+
+    def add_syms(self, original: Path) -> None:
+        info_path = self.get_info_path()
+        info = self.get_info()
+        syms = self.get_syms()
+
+        instance = self.instance
+        if str(instance) in list(syms.keys()) and instance != 0:
+            raise ValueError("instance already exists")
+        if original in list(syms.values()) and instance == 0:
+            instance = {v: k for k, v in syms.items()}[original]
+
+        syms[str(instance)] = str(beautypath(original))
+        info["syms"] = syms
+        with open(info_path, "w") as File:
+            json.dump(info, File, indent=4)
+
+    def rm_syms(self, index: int) -> None:
+        info_path = self.get_info_path()
+        info = self.get_info()
+        syms = self.get_syms()
+
+        syms.pop(str(index))
+        info["syms"] = syms
+
+        with open(info_path, "w") as File:
+            json.dump(info, File, indent=4)
+
 
 def sudo_level_in_argv(argv: list, sudo_levels=["system"]):
     for level in sudo_levels:
@@ -223,65 +277,6 @@ def get_target_groups(
     return results
 
 
-def get_info_path(target: TargetGroup) -> Path:
-    match target.range:
-        case TargetExtentions.GROUP:
-            path = target.path / "info.json"
-            return path
-        case TargetExtentions.BRANCH:
-            path = target.path.parent / "info.json"
-            return path
-        case TargetExtentions.INSTANCE:
-            path = target.path.parent.parent / "info.json"
-            return path
-        case _:
-            raise Exception("invalid target range")
-
-
-def get_info(target: TargetGroup) -> dict:
-    path = get_info_path(target)
-    if not path.exists():
-        with open(path, "w") as File:
-            json.dump({"syms": {}, "deps": {}}, File, indent=4)
-    with open(path, "r") as File:
-        return json.load(File)
-
-
-def get_syms(target: TargetGroup) -> dict:
-    info_path = get_info_path(target)
-    info = get_info(target)
-    return info["syms"]
-
-
-def add_syms(target: TargetGroup, original: Path) -> None:
-    info_path = get_info_path(target)
-    info = get_info(target)
-    syms = get_syms(target)
-
-    instance = target.instance
-    if str(instance) in list(syms.keys()) and instance != 0:
-        raise ValueError("instance already exists")
-    if original in list(syms.values()) and instance == 0:
-        instance = {v: k for k, v in syms.items()}[original]
-
-    syms[str(instance)] = str(beautypath(original))
-    info["syms"] = syms
-    with open(info_path, "w") as File:
-        json.dump(info, File, indent=4)
-
-
-def rm_syms(target: TargetGroup, index: int) -> None:
-    info_path = get_info_path(target)
-    info = get_info(target)
-    syms = get_syms(target)
-
-    syms.pop(str(index))
-    info["syms"] = syms
-
-    with open(info_path, "w") as File:
-        json.dump(info, File, indent=4)
-
-
 # def get_deps(
 #     target: TargetGroup,
 # ) -> dict:
@@ -333,8 +328,7 @@ def get_installed_branchs(path: Path) -> list[TargetGroup]:
     available_branchs = get_available_branchs(path)
     installed_branchs: list = []
     for group in available_branchs:
-        with open(group.path / "syms.json", "r") as File:
-            syms: dict = json.load(File)
+        syms = group.get_syms()
 
         for original, sym in syms.items():
             original = Path().joinpath(group.path, original)

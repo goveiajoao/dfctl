@@ -5,7 +5,7 @@ from rich.console import Console
 from rich.tree import Tree
 
 from dfctl.lib.parser import SubParser, SubParserSetupReturn
-from dfctl.lib.target import TargetExtentions, TargetGroup, rm_syms
+from dfctl.lib.target import TargetExtentions, TargetGroup
 
 
 class CMD(SubParser):
@@ -39,7 +39,7 @@ class CMD(SubParser):
         @final
         def instance(group: TargetGroup, tree: Tree = Tree("")):
             # remove from .syms file
-            rm_syms(group, group.instance)
+            group.rm_syms(group.instance)
 
             # remove from every branch
             group_path = group.path.parent.parent

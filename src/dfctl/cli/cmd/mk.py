@@ -4,7 +4,7 @@ from shutil import copy, copytree, rmtree
 from rich.console import Console
 
 from dfctl.lib.parser import SubParser, SubParserSetupReturn
-from dfctl.lib.target import TargetExtentions, TargetGroup, add_syms
+from dfctl.lib.target import TargetExtentions, TargetGroup
 
 
 class CMD(SubParser):
@@ -25,7 +25,7 @@ class CMD(SubParser):
             copytree(original, sym, dirs_exist_ok=True)
             rmtree(original)
 
-        add_syms(group, original)
+        group.add_syms(original)
 
         config.gitter.commit(f"Created '{str(group)}'")
         console.log(f"[bold green]Created[/] [bold blue]'{str(group)}'[/]")
