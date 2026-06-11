@@ -223,6 +223,99 @@ def get_target_groups(
     return results
 
 
+def get_info_path(target: TargetGroup) -> Path:
+    match target.range:
+        case TargetExtentions.GROUP:
+            path = target.path / "info.json"
+            return path
+        case TargetExtentions.BRANCH:
+            path = target.path.parent / "info.json"
+            return path
+        case TargetExtentions.INSTANCE:
+            path = target.path.parent.parent / "info.json"
+            return path
+        case _:
+            raise Exception("invalid target range")
+
+
+def get_info(target: TargetGroup) -> dict:
+    path = get_info_path(target)
+    if not path.exists():
+        with open(path, "w") as File:
+            json.dump({"syms": {}, "deps": {}}, File, indent=4)
+    with open(path, "r") as File:
+        return json.load(File)
+
+
+def get_syms(target: TargetGroup) -> dict:
+    info_path = get_info_path(target)
+    info = get_info(target)
+    return info["syms"]
+
+
+def add_syms(target: TargetGroup, original: Path) -> None:
+    info_path = get_info_path(target)
+    info = get_info(target)
+    syms = get_syms(target)
+
+    instance = target.instance
+    if str(instance) in list(syms.keys()) and instance != 0:
+        raise ValueError("instance already exists")
+    if original in list(syms.values()) and instance == 0:
+        instance = {v: k for k, v in syms.items()}[original]
+
+    syms[str(instance)] = str(beautypath(original))
+    info["syms"] = syms
+    with open(info_path, "w") as File:
+        json.dump(info, File, indent=4)
+
+
+def rm_syms(target: TargetGroup, index: int) -> None:
+    info_path = get_info_path(target)
+    info = get_info(target)
+    syms = get_syms(target)
+
+    syms.pop(str(index))
+    info["syms"] = syms
+
+    with open(info_path, "w") as File:
+        json.dump(info, File, indent=4)
+
+
+# def get_deps(
+#     target: TargetGroup,
+# ) -> dict:
+#     if target.range in [TargetExtentions.GROUP, TargetExtentions.BRANCH]:
+#         try:
+#             with open(target.path / ".deps.json", "r") as File:
+#                 return json.load(File)
+#         except Exception:
+#             return {}
+#     else:
+#         raise Exception("invalid target range")
+#
+#
+# def check_deps(
+#     target: TargetGroup,
+# ) -> bool:
+#     deps = get_deps(target)
+#
+#     for k, v in deps.items():
+#         if not isinstance(v, list):
+#             raise Exception(f"deps not right in {str(target)}")
+#         match k:
+#             case "which":
+#                 for x in v:
+#                     if shutil.which(x) is None:
+#                         return False
+#             case "exists":
+#                 for x in v:
+#                     if not Path(x).expanduser().exists():
+#                         return False
+#
+#     return True
+
+
 def get_available_groups(path: Path) -> list[TargetGroup]:
     return get_target_groups("*@*", path, TargetExtentions.GROUP)
 
@@ -234,95 +327,6 @@ def get_available_branchs(path: Path) -> list[TargetGroup]:
         for x in available_groups
         for y in next(x.path.walk())[1]
     ]
-
-
-def get_deps(
-    target: TargetGroup,
-) -> dict:
-    if target.range in [TargetExtentions.GROUP, TargetExtentions.BRANCH]:
-        try:
-            with open(target.path / ".deps.json", "r") as File:
-                return json.load(File)
-        except Exception:
-            return {}
-    else:
-        raise Exception("invalid target range")
-
-
-def check_deps(
-    target: TargetGroup,
-) -> bool:
-    deps = get_deps(target)
-
-    for k, v in deps.items():
-        if not isinstance(v, list):
-            raise Exception(f"deps not right in {str(target)}")
-        match k:
-            case "which":
-                for x in v:
-                    if shutil.which(x) is None:
-                        return False
-            case "exists":
-                for x in v:
-                    if not Path(x).expanduser().exists():
-                        return False
-
-    return True
-
-
-def get_syms_path(
-    target: TargetGroup,
-) -> Path:
-    match target.range:
-        case TargetExtentions.GROUP:
-            syms_path = target.path / ".syms.json"
-            return syms_path
-        case TargetExtentions.BRANCH:
-            syms_path = target.path.parent / ".syms.json"
-            return syms_path
-        case TargetExtentions.INSTANCE:
-            syms_path = target.path.parent.parent / ".syms.json"
-            return syms_path
-        case _:
-            raise Exception("invalid target range")
-
-
-def get_syms(target: TargetGroup) -> dict:
-    if target.range in (
-        TargetExtentions.GROUP,
-        TargetExtentions.BRANCH,
-        TargetExtentions.INSTANCE,
-    ):
-        syms_path = get_syms_path(target)
-        if not syms_path.exists():
-            with open(syms_path, "w") as File:
-                json.dump({}, File)
-        with open(syms_path, "r") as File:
-            return json.load(File)
-    else:
-        raise Exception("invalid target range")
-
-
-def add_syms(target: TargetGroup, original: Path) -> None:
-    if target.range in (
-        TargetExtentions.GROUP,
-        TargetExtentions.BRANCH,
-        TargetExtentions.INSTANCE,
-    ):
-
-        syms = get_syms(target)
-        syms_path = get_syms_path(target)
-
-        with open(syms_path, "w") as File:
-            json.dump({target.instance: str(beautypath(original))} | syms, File)
-    else:
-        raise Exception("invalid target range")
-
-
-def rm_syms(target: TargetGroup, index: int) -> None:
-    syms = {k: v for k, v in get_syms(target).items() if k != str(index)}
-    with open(get_syms_path(target), "w") as File:
-        json.dump(syms, File)
 
 
 def get_installed_branchs(path: Path) -> list[TargetGroup]:
