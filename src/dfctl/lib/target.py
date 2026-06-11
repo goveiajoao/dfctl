@@ -320,10 +320,8 @@ def add_syms(target: TargetGroup, original: Path) -> None:
 
 
 def rm_syms(target: TargetGroup, index: int) -> None:
-    syms = get_syms(target)
-    syms.pop(index)
-
-    with open(target.path / ".syms.json", "w") as File:
+    syms = {k: v for k, v in get_syms(target).items() if k != str(index)}
+    with open(get_syms_path(target), "w") as File:
         json.dump(syms, File)
 
 

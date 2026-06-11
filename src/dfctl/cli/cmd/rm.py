@@ -1,11 +1,11 @@
-import json
 from pathlib import Path
 from shutil import rmtree
 
 from rich.console import Console
+from rich.tree import Tree
 
 from dfctl.lib.parser import SubParser, SubParserSetupReturn
-from dfctl.lib.target import TargetExtentions, TargetGroup, get_syms, rm_syms
+from dfctl.lib.target import TargetExtentions, TargetGroup, rm_syms
 
 
 class CMD(SubParser):
@@ -23,20 +23,54 @@ class CMD(SubParser):
 
         def final(func):
             def __deco(*args, **kwargs):
-                func(*args, **kwargs)
                 msg = str(args[0])
+                tree = Tree(f"[bold red]Removed[/] [bold blue]'{msg}'")
+
+                func(*args, tree, **kwargs)
+                console.log(tree)
                 config.gitter.commit(f"Removed '{msg}'")
-                console.log(f"[bold red]Removed[/] [bold blue]'{msg}'")
 
             return __deco
 
         @final
-        def default(group: TargetGroup):
+        def default(group: TargetGroup, tree: Tree = Tree("")):
             rmtree(group.path)
 
         @final
-        def instance(group: TargetGroup):
+        def instance(group: TargetGroup, tree: Tree = Tree("")):
+            # remove from .syms file
             rm_syms(group, group.instance)
+
+            # remove from every branch
+            group_path = group.path.parent.parent
+            for origin, branchs, _ in group_path.walk():
+                for branch in branchs:
+                    contents = [
+                        y
+                        for x in next(Path.joinpath(origin, branch).walk())[1:]
+                        for y in x
+                    ]
+                    for content in contents:
+                        path = origin / branch / content
+                        if content == str(group.instance):
+
+                            # Delete Instance
+                            path.unlink() if path.is_file() else rmtree(path)
+
+                            # Delete Branch
+                            if len(contents) == 1:
+                                rmtree(origin / branch)
+                                tree.add(
+                                    f"[bold red]Removed[/] [bold blue]Branch '{branch}'"
+                                )
+
+                            # Delete Group
+                            if len(next(group_path.walk())[1]) == 0:
+                                rmtree(group_path)
+                                tree.add(
+                                    f"[bold red]Removed[/] [bold blue]Group '{group.name}'"
+                                )
+                break
 
         match mode:
             case TargetExtentions.INSTANCE:
