@@ -31,6 +31,11 @@ class CMD(SubParser):
                 nm_group = tree.add(
                     f"{"[bold green]" if group.name in installed_groups else "[bold red]"}{group.name}"
                 )
+                nm_syms = nm_group.add("[bold purple]syms")
+                syms = group.get_syms()
+                for k, v in syms.items():
+                    nm_syms.add(f"([blue]{k}[/] > [blue]{v}[/])")
+
                 for branch in next(group.path.walk())[1]:
                     status = "[bold red]"
                     try:
@@ -41,12 +46,7 @@ class CMD(SubParser):
                         )
                     except Exception:
                         pass
-
-                    nm_branch = nm_group.add(f"{status}{branch}")
-                    with open(group.path / branch / "syms.json", "r") as File:
-                        jsonfile = json.load(File)
-                    for k, v in jsonfile.items():
-                        nm_branch.add(f"([blue]{k}[/] > [purple]{v}[/])")
+                    nm_group.add(f"{status}{branch}")
             console.log(tree)
 
     def setup(self, subparser):

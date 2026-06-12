@@ -25,8 +25,7 @@ class CMD(SubParser):
             with console.status("[bold red] Uninstalling..."):
 
                 path: Path = group.path
-                with open(path / "syms.json", "r") as File:
-                    syms: dict = json.load(File)
+                syms = group.get_syms()
 
                 uninstalled: list = []
                 for original, sym in syms.items():
