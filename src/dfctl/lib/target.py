@@ -57,7 +57,7 @@ class TargetGroup:
         }
         symbols: list[str] = [v[0] for v in extentions.values()]
 
-        string = f"{self.level}{symbols[0]}{self.name}{symbols[1]}{self.branch}{symbols[2]}{self.instance}"
+        string = str(self)
         for x in symbols:
             string = string.replace(x, "/")
         self.path = self.path / string
@@ -85,7 +85,6 @@ class TargetGroup:
             return json.load(File)
 
     def get_syms(self) -> dict:
-        info_path = self.get_info_path()
         info = self.get_info()
         return info["syms"]
 
@@ -259,7 +258,7 @@ def get_target_groups(
                         if not notfound:
                             prov_result.path.parent.mkdir(parents=True, exist_ok=True)
 
-                            syms = get_syms(prov_result)
+                            syms = prov_result.get_syms()
 
                             if str(prov_result.instance) in list(syms.keys()):
                                 if no_instance_passed:

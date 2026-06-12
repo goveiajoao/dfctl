@@ -34,8 +34,7 @@ class CMD(SubParser):
                     )
 
                 path: Path = group.path
-                with open(path / "syms.json", "r") as File:
-                    syms: dict = json.load(File)
+                syms = group.get_syms()
 
                 installed: list = []
                 run_status: str = ""
@@ -46,7 +45,7 @@ class CMD(SubParser):
 
                     while True:
                         try:
-                            sym.symlink_to(path / original)
+                            sym.symlink_to(original)
                             break
                         except FileExistsError:
                             if sym.is_symlink():
