@@ -36,8 +36,12 @@ class CMD(SubParser):
                 for k, v in syms.items():
                     nm_syms.add(f"([blue]{k}[/] > [blue]{v}[/])")
 
+                nm_branchs = nm_group.add("[purple]branchs")
                 for branch in next(group.path.walk())[1]:
                     status = "[bold red]"
+                    branch_content = [
+                        y for x in next((group.path / branch).walk())[1:] for y in x
+                    ]
                     try:
                         status = (
                             "[bold green]"
@@ -46,7 +50,10 @@ class CMD(SubParser):
                         )
                     except Exception:
                         pass
-                    nm_group.add(f"{status}{branch}")
+                    nm_branch = nm_branchs.add(f"{status}{branch}")
+                    nm_branch.add(
+                        label=f"{','.join(f"[bold blue]{x}[/]" for x in branch_content)}"
+                    )
             console.log(tree)
 
     def setup(self, subparser):
