@@ -115,6 +115,26 @@ class TargetGroup:
         with open(info_path, "w") as File:
             json.dump(info, File, indent=4)
 
+    def get_deps(self):
+        info = self.get_info()
+        return info["deps"]
+
+    def check_deps(self):
+        deps = self.get_deps()
+        for k, v in deps.items():
+            if not isinstance(v, list):
+                raise Exception(f"deps not right in {str(self)}")
+            match k:
+                case "which":
+                    for x in v:
+                        if shutil.which(x) is None:
+                            return False
+                case "exists":
+                    for x in v:
+                        if not Path(x).expanduser().exists():
+                            return False
+        return True
+
 
 def sudo_level_in_argv(argv: list, sudo_levels=["system"]):
     for level in sudo_levels:
@@ -274,40 +294,6 @@ def get_target_groups(
 
     results = [x for x in results if x.name not in result_remove_list]
     return results
-
-
-# def get_deps(
-#     target: TargetGroup,
-# ) -> dict:
-#     if target.range in [TargetExtentions.GROUP, TargetExtentions.BRANCH]:
-#         try:
-#             with open(target.path / ".deps.json", "r") as File:
-#                 return json.load(File)
-#         except Exception:
-#             return {}
-#     else:
-#         raise Exception("invalid target range")
-#
-#
-# def check_deps(
-#     target: TargetGroup,
-# ) -> bool:
-#     deps = get_deps(target)
-#
-#     for k, v in deps.items():
-#         if not isinstance(v, list):
-#             raise Exception(f"deps not right in {str(target)}")
-#         match k:
-#             case "which":
-#                 for x in v:
-#                     if shutil.which(x) is None:
-#                         return False
-#             case "exists":
-#                 for x in v:
-#                     if not Path(x).expanduser().exists():
-#                         return False
-#
-#     return True
 
 
 def get_available_groups(path: Path) -> list[TargetGroup]:
