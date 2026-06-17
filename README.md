@@ -1,4 +1,9 @@
-# ***D***ot***f***iles ***C***on***t***ro***l***
+<p align="center">
+    <img src="assets/dfctl.png">
+</p>
+
+---
+
 A simple and easy dotfiles control tool
 
 - TODO:
