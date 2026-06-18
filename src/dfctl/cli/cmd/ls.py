@@ -31,6 +31,22 @@ class CMD(SubParser):
                 nm_group = tree.add(
                     f"{"[bold green]" if group.name in installed_groups else "[bold red]"}{group.name}"
                 )
+
+                raw_deps = group.get_deps()
+                deps_result, deps_by_key, deps_by_values = group.check_deps()
+                if len(raw_deps) > 0:
+                    nm_deps = nm_group.add(
+                        f"{'[bold green]' if deps_result else '[bold red]'}deps"
+                    )
+                    for k, v in raw_deps.items():
+                        nm_deps_check = nm_deps.add(
+                            f"{'[bold green]' if deps_by_key[k] else '[bold red]'}{k}"
+                        )
+                        for _, i in enumerate(v):
+                            nm_deps_check.add(
+                                f"{'[bold green]' if deps_by_values[k][_] else '[bold red]'}{i}"
+                            )
+
                 nm_syms = nm_group.add("[bold purple]syms")
                 syms = group.get_syms()
                 for k, v in syms.items():
@@ -50,9 +66,8 @@ class CMD(SubParser):
                         )
                     except Exception:
                         pass
-                    nm_branch = nm_branchs.add(f"{status}{branch}")
-                    nm_branch.add(
-                        label=f"{','.join(f"[bold blue]{x}[/]" for x in branch_content)}"
+                    nm_branchs.add(
+                        f"{status}{branch}[/] - [{','.join(f"[bold blue]{x}[/]" for x in branch_content)}]"
                     )
             console.log(tree)
 

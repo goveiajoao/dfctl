@@ -80,7 +80,7 @@ class TargetGroup:
         path = self.get_info_path()
         if not path.exists():
             with open(path, "w") as File:
-                json.dump({"syms": {}, "deps": {}}, File, indent=4)
+                json.dump({"syms": {}, "deps": {"*": {}}}, File, indent=4)
         with open(path, "r") as File:
             return json.load(File)
 
@@ -117,23 +117,36 @@ class TargetGroup:
 
     def get_deps(self):
         info = self.get_info()
-        return info["deps"]
+        deps = info["deps"]
+        match self.range:
+            case TargetExtentions.GROUP:
+                return deps["*"]
+            case TargetExtentions.BRANCH:
+                return info[self.branch] | deps["*"]
+            case _:
+                raise ValueError("invalid range")
 
     def check_deps(self):
         deps = self.get_deps()
+        check_result = {k: [True for i in v] for k, v in deps.items()}
+
         for k, v in deps.items():
             if not isinstance(v, list):
                 raise Exception(f"deps not right in {str(self)}")
             match k:
                 case "which":
-                    for x in v:
+                    for _, x in enumerate(v):
                         if shutil.which(x) is None:
-                            return False
+                            check_result["which"][_] = False
                 case "exists":
-                    for x in v:
+                    for _, x in enumerate(v):
                         if not Path(x).expanduser().exists():
-                            return False
-        return True
+                            check_result["exists"][_] = False
+        return (
+            all([y for x in check_result.values() for y in x]),
+            {k: all([x for x in v]) for k, v in check_result.items()},
+            check_result,
+        )
 
 
 def sudo_level_in_argv(argv: list, sudo_levels=["system"]):
