@@ -20,6 +20,10 @@ A simple and easy dotfiles control tool
     - [x] pyproject.toml
     - [ ] setup git version
     - [ ] add pyproject version integration with git version
+
+---
+
+
 - Future Ideas:
     - [x] maybe reimagine syms.json layout, instead of one PER BRANCH, maybe one ber group is more viable, so then each branch only have its instances (0,1,2,...), will lose some power, but maybe its just more simple
           then ONE FOR EACH BRANCH, like, in the ls i can see how this may scale with multiple branches with just (0 > ~/.config/nvim) ...)
@@ -28,5 +32,3 @@ A simple and easy dotfiles control tool
     - [ ] Makefile in dots repo to quickly install and setup config for dfctl (so i just need to clone the dots repo and do make inside it)
     - [ ] "ignore" Command to ignore items in folder instance (.gitignore inside folder instances), same vibe as dep but for ignoring things in INSTANCES
     - [ ] Option in mk to create multiple instances at once and other one to just make the group name the folder instance name, like, ~/.config/tmux creates group tmux without you needing to do "dfctl mk tmux ~/.config/tmux"
-- After:
-    - Just review the code and add needed features
