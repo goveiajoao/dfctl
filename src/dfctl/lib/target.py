@@ -122,7 +122,7 @@ class TargetGroup:
             case TargetExtentions.GROUP:
                 return deps["*"]
             case TargetExtentions.BRANCH:
-                return info[self.branch] | deps["*"]
+                return deps.get(self.branch, {}) | deps["*"]
             case _:
                 raise ValueError("invalid range")
 

@@ -38,6 +38,14 @@ class Config:
         default_factory=lambda: lambda: Confirm.ask("Enable noconfirm?")
     )
 
+    editor: bool | Callable = field(
+        default_factory=lambda: lambda: take_value(
+            Confirm.ask("Change editor? (nano)"),
+            lambda: input("Editor: "),
+            "nano",
+        )
+    )
+
     autopull: bool | Callable = field(
         default_factory=lambda: lambda: Confirm.ask("Enable autopull?")
     )
@@ -67,7 +75,7 @@ class Config:
             if k not in self.__exclude:
                 self[k] = load_config[k]
         with open(self.path, "w") as File:
-            json.dump(load_config, File)
+            json.dump(load_config, File, indent=4)
 
         if not isinstance(self["dots_path"], Path):
             self["dots_path"] = Path(self["dots_path"]).expanduser()
