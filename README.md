@@ -8,16 +8,10 @@ A simple and easy dotfiles control tool
 
 - TODO:
     - [x] Target System
-    - [x] Commands: 
-        - [x] install
-        - [x] uninstall
-        - [x] rm
-        - [x] mk
-        - [x] ls
-        - [x] pull/push
-    - [ ] man/help
+    - [x] Commands
     - [x] elevate for system dots
     - [x] pyproject.toml
+    - [ ] man/help
     - [ ] setup git version
     - [ ] add pyproject version integration with git version
 
