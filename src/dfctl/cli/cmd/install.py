@@ -21,6 +21,7 @@ class CMD(SubParser):
             "ALREADY": "[bold orange1]",
             "OVERWRITE": "[bold red]",
         }
+
         for group in groups:
             with console.status("[bold green] Installing..."):
                 alreadyones = [
@@ -34,7 +35,6 @@ class CMD(SubParser):
                     )
 
                 if group.check_deps()[0]:
-                    print(group.check_deps()[0])
                     path: Path = group.path
                     syms = group.get_syms()
 
