@@ -30,6 +30,12 @@ class SubParser(ABC):
     def setup(self, subparser: argparse.ArgumentParser) -> SubParserSetupReturn:
         pass
 
+    @abstractmethod
+    def generate(
+        self, subparsers: argparse._SubParsersAction, name: str, parents: list
+    ) -> argparse.ArgumentParser:
+        pass
+
     class FuncDeco:
         def __init__(self, config: Config, setup: SubParserSetupReturn) -> None:
             self.config = config
@@ -106,6 +112,13 @@ class SubParser(ABC):
 
             return __deco
 
-    def __init__(self, subparser: argparse.ArgumentParser, config: Config):
+    def __init__(
+        self,
+        subparsers: argparse._SubParsersAction,
+        name: str,
+        parents: list,
+        config: Config,
+    ):
+        subparser = self.generate(subparsers, name, parents)
         setup: SubParserSetupReturn = self.setup(subparser)
         subparser.set_defaults(func=self.FuncDeco(config, setup)(self.func))
