@@ -15,9 +15,9 @@ from dfctl.lib.target import TargetExtentions, get_target_groups, sudo_level_in_
 @dataclass()
 class SubParserSetupReturn:
     mode: None | TargetExtentions = None
-    autopullsh: bool = False
+    autopullsh: tuple = (False, False)
     notfind: bool = True
-    ask: str = "Are you sure you want to proceed"
+    ask: None | str = "Are you sure you want to proceed"
     ask_end: str = "?"
 
 
@@ -71,12 +71,16 @@ class SubParser(ABC):
                 except Exception:
                     pass
 
-                if (
-                    Confirm.ask(f"{self.setup.ask}{self.setup.ask_end}")
-                    if not self._args.noconfirm
-                    else True
-                ):
+                if self.setup.ask != None:
+                    if (
+                        Confirm.ask(f"{self.setup.ask}{self.setup.ask_end}")
+                        if not self._args.noconfirm
+                        else True
+                    ):
+                        return groups
+                else:
                     return groups
+
             return []
 
         def __exit__(self, exc_type, exc_val, exc_tb):
@@ -86,7 +90,7 @@ class SubParser(ABC):
             def __deco(*args, **kwargs):
                 self._args = args[0]
 
-                if args[0].autopull and self.setup.autopullsh and not isroot():
+                if args[0].autopull and self.setup.autopullsh[0] and not isroot():
                     self.config.gitter.pull()
 
                 with self as groups:
@@ -95,7 +99,7 @@ class SubParser(ABC):
                     new_args = (self._args, self.config)
                     result = func(*new_args, **kwargs)
 
-                if args[0].autopush and self.setup.autopullsh:
+                if args[0].autopush and self.setup.autopullsh[1]:
                     self.config.gitter.push()
 
                 return result

@@ -89,4 +89,4 @@ class CMD(SubParser):
             help=f"{{{','.join(mode_choices)}}}",
         )
         subparser.add_argument("target", help="<mode> target")
-        return SubParserSetupReturn(None, True)
+        return SubParserSetupReturn(None, (True, True))

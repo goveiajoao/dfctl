@@ -45,4 +45,4 @@ class CMD(SubParser):
             E.G: "~/.config/tmux" """,
         )
 
-        return SubParserSetupReturn(TargetExtentions.INSTANCE, True, False)
+        return SubParserSetupReturn(TargetExtentions.INSTANCE, (True, True), False)
