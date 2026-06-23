@@ -46,3 +46,6 @@ class CMD(SubParser):
         )
 
         return SubParserSetupReturn(TargetExtentions.INSTANCE, (True, True), False)
+
+    def generate(self, subparsers, name, parents):
+        return subparsers.add_parser(name, parents=parents, help="makes an instance")

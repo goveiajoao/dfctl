@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 from rich.console import Console
@@ -54,3 +53,8 @@ class CMD(SubParser):
     def setup(self, subparser):
         subparser.add_argument("target", help="group target")
         return SubParserSetupReturn(TargetExtentions.GROUP)
+
+    def generate(self, subparsers, name, parents):
+        return subparsers.add_parser(
+            name, parents=parents, help="uninstall passed group target"
+        )

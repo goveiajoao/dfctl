@@ -77,3 +77,8 @@ class CMD(SubParser):
             help="use to overwrite already installed branchs",
         )
         return SubParserSetupReturn(TargetExtentions.BRANCH)
+
+    def generate(self, subparsers, name, parents):
+        return subparsers.add_parser(
+            name, parents=parents, help="installs passed branch target"
+        )

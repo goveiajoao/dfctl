@@ -90,3 +90,8 @@ class CMD(SubParser):
         )
         subparser.add_argument("target", help="<mode> target")
         return SubParserSetupReturn(None, (True, True))
+
+    def generate(self, subparsers, name, parents):
+        return subparsers.add_parser(
+            name, parents=parents, help="removes passed <x> target"
+        )

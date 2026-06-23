@@ -73,3 +73,6 @@ class CMD(SubParser):
 
     def setup(self, subparser):
         return SubParserSetupReturn(None)
+
+    def generate(self, subparsers, name, parents):
+        return subparsers.add_parser(name, parents=parents, help="lists the dotfile")

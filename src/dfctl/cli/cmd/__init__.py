@@ -18,6 +18,11 @@ def init(
         full_name = f"{cmd_iter.__name__}.{name}"
         module = importlib.import_module(full_name)
         try:
-            module.CMD(subparsers.add_parser(name, parents=[argument_parser]), config)
+            module.CMD(
+                subparsers,
+                name,
+                [argument_parser],
+                config,
+            )
         except Exception as e:
             console.log(e)

@@ -1,13 +1,7 @@
 import os
-from collections import defaultdict
-from pathlib import Path
-
-from rich import print
-from rich.console import Console
-from rich.tree import Tree
 
 from dfctl.lib.parser import SubParser, SubParserSetupReturn
-from dfctl.lib.target import TargetExtentions, TargetGroup, get_available_groups
+from dfctl.lib.target import TargetExtentions, TargetGroup
 
 
 class CMD(SubParser):
@@ -20,3 +14,6 @@ class CMD(SubParser):
     def setup(self, subparser):
         subparser.add_argument("target", help="instance target")
         return SubParserSetupReturn(TargetExtentions.INSTANCE, (True, True), True, None)
+
+    def generate(self, subparsers, name, parents):
+        return subparsers.add_parser(name, parents=parents, help="edits an instance")
