@@ -4,7 +4,7 @@ from dfctl.lib.parser import SubParser, SubParserSetupReturn
 
 class CMD(SubParser):
     def func(self, args, config):
-        pull(config.remote)
+        config.gitter.pull()
 
     def setup(self, subparser):
         return SubParserSetupReturn(None)
