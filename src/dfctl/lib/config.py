@@ -1,5 +1,6 @@
 import json
 from dataclasses import dataclass, field
+from os import getenv
 from pathlib import Path
 from typing import Any, Callable
 
@@ -11,12 +12,15 @@ from dfctl.lib.misc import take_value
 
 @dataclass
 class Config:
-    __exclude = ["__exclude", "path", "uid", "gid", "pcomm", "gitter"]
+    __exclude = ["__exclude", "path", "uid", "gid", "pcomm", "gitter", "editor"]
     path: Path
     uid: int
     gid: int
     pcomm: Any
     gitter: Gitter = field(init=False)
+    editor: None | str = getenv("EDITOR")
+    if not editor:
+        raise ValueError("no enviroment variable $EDITOR")
 
     dots_repo: None | str | Callable = field(
         default_factory=lambda: lambda: take_value(
@@ -36,14 +40,6 @@ class Config:
 
     noconfirm: bool | Callable = field(
         default_factory=lambda: lambda: Confirm.ask("Enable noconfirm?")
-    )
-
-    editor: bool | Callable = field(
-        default_factory=lambda: lambda: take_value(
-            Confirm.ask("Change editor? (nano)"),
-            lambda: input("Editor: "),
-            "nano",
-        )
     )
 
     autopull: bool | Callable = field(
