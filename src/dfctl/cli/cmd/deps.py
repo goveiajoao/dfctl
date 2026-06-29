@@ -1,7 +1,7 @@
-import os
+from argparse import RawDescriptionHelpFormatter
 
 from dfctl.lib.parser import SubParser, SubParserSetupReturn
-from dfctl.lib.target import TargetExtentions, TargetGroup
+from dfctl.lib.target import TargetGroup
 
 
 class CMD(SubParser):
@@ -10,11 +10,6 @@ class CMD(SubParser):
         pass
 
     def setup(self, subparser):
-
-        subparser.add_argument(
-            "dep",
-            help=f"ACTION:TYPE:DEP (e.g which:dfctl)",
-        )
 
         mode_choices = ["group", "branch"]
         subparser.add_argument(
@@ -29,5 +24,11 @@ class CMD(SubParser):
 
     def generate(self, subparsers, name, parents):
         return subparsers.add_parser(
-            name, parents=parents, help="manage group|branch target dependencies"
+            name,
+            parents=parents,
+            formatter_class=RawDescriptionHelpFormatter,
+            help="manage group|branch target dependencies",
+            epilog="action:\n"
+            "  ACTION:TYPE:DEP\n"
+            "                                   ",
         )
