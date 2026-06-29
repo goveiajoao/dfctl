@@ -61,8 +61,12 @@ class Config:
             with open(self.path, "w") as File:
                 json.dump({}, File)
 
-        with open(self.path, "r") as File:
-            load_config: dict = json.load(File)
+        try:
+            with open(self.path, "r") as File:
+                load_config: dict = json.load(File)
+        except:
+            raise ValueError("config file is not right")
+
         for k, v in vars(self).items():
             if k not in load_config and k not in self.__exclude:
                 if isinstance(v, Callable):
